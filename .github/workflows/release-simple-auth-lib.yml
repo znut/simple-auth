@@ -58,7 +58,7 @@ jobs:
           gh release create "$TAG" \
             --title "simple-auth-lib v$VERSION" \
             --notes "Release simple-auth-lib v$VERSION" \
-            simple-auth-lib/dist/*
+            ./simple-auth-lib/dist/*
 
       - name: Publish library dist to GitHub Packages
         working-directory: simple-auth-lib/dist
