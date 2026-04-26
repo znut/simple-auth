@@ -1,6 +1,6 @@
 {
 	"name": "@znut/simple-auth-lib",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"sideEffects": false,
 	"files": [
@@ -15,7 +15,7 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts --format esm --dts --clean",
+		"build": "tsup src/index.ts --format esm --dts --clean && node ./scripts/prepare-dist.mjs",
 		"test": "vitest run src/session.test.ts"
 	},
 	"publishConfig": {
