@@ -7,7 +7,7 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
 	use: {
-		baseURL: "http://auth.ex.localhost:4174",
+		baseURL: "http://auth.ex.localhost:5100",
 		trace: "retain-on-failure",
 	},
 	projects: [
@@ -17,8 +17,8 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: "vite dev --host 0.0.0.0 --port 4174",
-		url: "http://auth.ex.localhost:4174",
+		command: "vite dev",
+		url: "http://auth.ex.localhost:5100",
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,
 	},

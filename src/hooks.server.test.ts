@@ -113,7 +113,7 @@ describe("auth session hook", () => {
 			async event => new Response(JSON.stringify(event.locals.user))
 		)
 		const url = new URL(
-			"http://auth.ex.localhost:4174/?next=http%3A%2F%2Fdashboard.ex.localhost%3A4173%2F"
+			"http://auth.ex.localhost:5100/?next=http%3A%2F%2Fdashboard.ex.localhost%3A4173%2F"
 		)
 
 		createDb.mockReturnValue(db)

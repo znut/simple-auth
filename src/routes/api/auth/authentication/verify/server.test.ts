@@ -103,7 +103,7 @@ describe("POST /api/auth/authentication/verify", () => {
 		vi.clearAllMocks()
 		getAuthenticationChallenge.mockReturnValue("challenge-1")
 		normalizeEmail.mockReturnValue("lead@example.com")
-		expectedOrigin.mockReturnValue("http://auth.ex.localhost:4174")
+		expectedOrigin.mockReturnValue("http://auth.ex.localhost:5100")
 		expectedRpId.mockReturnValue("auth.ex.localhost")
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
@@ -169,7 +169,7 @@ describe("POST /api/auth/authentication/verify", () => {
 		}
 		const cookies = {}
 		const request = new Request(
-			"http://auth.ex.localhost:4174/api/auth/authentication/verify",
+			"http://auth.ex.localhost:5100/api/auth/authentication/verify",
 			{
 				method: "POST",
 				headers: {

@@ -62,14 +62,14 @@ describe("session helpers", () => {
 	})
 
 	it("only marks https origins as secure-cookie capable", () => {
-		expect(shouldUseSecureCookies("http://127.0.0.1:4174")).toBe(false)
+		expect(shouldUseSecureCookies("http://127.0.0.1:5100")).toBe(false)
 		expect(shouldUseSecureCookies(new URL("http://localhost:4173"))).toBe(false)
 		expect(shouldUseSecureCookies("https://dashboard.example.com")).toBe(true)
 	})
 
 	it("resolves a shared localhost cookie domain for local app hosts", () => {
 		expect(
-			resolveSessionCookieOptions("http://auth.ex.localhost:4174")
+			resolveSessionCookieOptions("http://auth.ex.localhost:5100")
 		).toEqual({
 			secure: false,
 			domain: "localhost",
@@ -91,7 +91,7 @@ describe("session helpers", () => {
 		expect(resolveSessionCookieOptions("https://example.com")).toEqual({
 			secure: true,
 		})
-		expect(resolveSessionCookieOptions("http://127.0.0.1:4174")).toEqual({
+		expect(resolveSessionCookieOptions("http://127.0.0.1:5100")).toEqual({
 			secure: false,
 		})
 	})
