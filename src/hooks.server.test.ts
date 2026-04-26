@@ -5,6 +5,7 @@ const {
 	clearSessionCookie,
 	createDb,
 	eq,
+	readSessionToken,
 	resolveSessionCookieOptions,
 	setSessionCookie,
 	signSessionToken,
@@ -15,6 +16,7 @@ const {
 	clearSessionCookie: vi.fn(),
 	createDb: vi.fn(),
 	eq: vi.fn(() => Symbol("eq")),
+	readSessionToken: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
 	setSessionCookie: vi.fn(),
 	signSessionToken: vi.fn(),
@@ -26,6 +28,7 @@ const {
 
 vi.mock("$lib/server/session", () => ({
 	clearSessionCookie,
+	readSessionToken,
 	resolveSessionCookieOptions,
 	sessionCookieName: "simple_auth_session",
 	setSessionCookie,
@@ -71,12 +74,12 @@ describe("auth session hook", () => {
 			secure: false,
 			domain: "localhost",
 		})
+		readSessionToken.mockReturnValue("legacy-auth-only-session")
 	})
 
 	it("reissues the session cookie with the shared domain after a valid auth-only session", async () => {
-		const sessionToken = "legacy-auth-only-session"
 		const cookies = {
-			get: vi.fn(() => sessionToken),
+			get: vi.fn(),
 		}
 		const user = {
 			id: 7,
@@ -151,6 +154,7 @@ describe("auth session hook", () => {
 		} as never)
 
 		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(url, "localhost")
+		expect(readSessionToken).toHaveBeenCalledWith(url, cookies)
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
 			"fresh-session-token",

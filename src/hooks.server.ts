@@ -6,8 +6,8 @@ import {
 } from "$lib/server/roles"
 import {
 	clearSessionCookie,
+	readSessionToken,
 	resolveSessionCookieOptions,
-	sessionCookieName,
 	setSessionCookie,
 	signSessionToken,
 	verifySessionToken,
@@ -28,7 +28,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 	const sessionSecret = resolveSessionSecret(event.platform?.env)
 
-	const sessionToken = event.cookies.get(sessionCookieName)
+	const sessionToken = readSessionToken(event.url, event.cookies)
 	if (sessionToken && event.locals.db) {
 		const payload = await verifySessionToken(sessionToken, sessionSecret)
 

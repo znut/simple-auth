@@ -1,4 +1,5 @@
 export const sessionCookieName = "simple_auth_session"
+export const sessionTokenQueryParamName = "simple_auth_token"
 export const sessionDurationMs = 1000 * 60 * 60 * 12
 
 export interface SessionRole {
@@ -20,7 +21,7 @@ export interface VerifiedSessionUser extends SessionUser {
 	iat: number
 }
 
-interface CookieStore {
+interface WritableCookieStore {
 	set(
 		name: string,
 		value: string,
@@ -45,6 +46,10 @@ interface CookieStore {
 	): void
 }
 
+interface ReadableCookieStore {
+	get(name: string): string | undefined
+}
+
 export interface SessionCookieOptions {
 	domain?: string
 	secure: boolean
@@ -60,7 +65,7 @@ function getBaseCookieOptions(options: SessionCookieOptions) {
 }
 
 function clearHostOnlySessionCookie(
-	cookies: CookieStore,
+	cookies: WritableCookieStore,
 	options: SessionCookieOptions
 ) {
 	cookies.delete(sessionCookieName, getBaseCookieOptions(options))
@@ -178,8 +183,41 @@ export async function verifySessionToken(token: string, secret: string) {
 	return payload
 }
 
+function resolveUrl(value: URL | Request | string) {
+	return value instanceof URL
+		? value
+		: value instanceof Request
+			? new URL(value.url)
+			: new URL(value)
+}
+
+export function appendSessionTokenToUrl(
+	value: URL | string,
+	token: string,
+	searchParamName = sessionTokenQueryParamName
+) {
+	const url = value instanceof URL ? new URL(value) : new URL(value)
+	url.searchParams.set(searchParamName, token)
+	return url.toString()
+}
+
+export function readSessionToken(
+	value: URL | Request | string,
+	cookies?: ReadableCookieStore,
+	searchParamName = sessionTokenQueryParamName
+) {
+	const url = resolveUrl(value)
+	const tokenFromUrl = url.searchParams.get(searchParamName)
+
+	if (tokenFromUrl) {
+		return tokenFromUrl
+	}
+
+	return cookies?.get(sessionCookieName) ?? null
+}
+
 export function setSessionCookie(
-	cookies: CookieStore,
+	cookies: WritableCookieStore,
 	token: string,
 	expiresAt: number,
 	options: SessionCookieOptions
@@ -196,7 +234,7 @@ export function setSessionCookie(
 }
 
 export function clearSessionCookie(
-	cookies: CookieStore,
+	cookies: WritableCookieStore,
 	options: SessionCookieOptions
 ) {
 	if (options.domain) {

@@ -2,43 +2,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
 	appendSessionTokenToUrl,
-	clearAuthenticationChallenge,
 	createTimestamp,
 	eq,
 	expectedOrigin,
 	expectedRpId,
-	getAuthenticationChallenge,
 	getDbOrThrow,
 	normalizeEmail,
 	resolvePostAuthRedirect,
+	resolveRegistrationInvite,
 	resolveSessionCookieOptions,
 	setSessionCookie,
-	shouldUseSecureCookies,
 	signSessionToken,
-	sql,
-	verifyAuthenticationResponse,
+	verifyRegistrationResponse,
 } = vi.hoisted(() => ({
 	appendSessionTokenToUrl: vi.fn(),
-	clearAuthenticationChallenge: vi.fn(),
 	createTimestamp: vi.fn(() => "2026-04-22T09:26:00.000Z"),
 	eq: vi.fn(() => Symbol("eq")),
 	expectedOrigin: vi.fn(),
 	expectedRpId: vi.fn(),
-	getAuthenticationChallenge: vi.fn(),
 	getDbOrThrow: vi.fn(),
 	normalizeEmail: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
+	resolveRegistrationInvite: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
 	setSessionCookie: vi.fn(),
-	shouldUseSecureCookies: vi.fn(),
 	signSessionToken: vi.fn(),
-	sql: vi.fn(() => "CURRENT_TIMESTAMP"),
-	verifyAuthenticationResponse: vi.fn(),
-}))
-
-vi.mock("$lib/server/authentication-challenge", () => ({
-	clearAuthenticationChallenge,
-	getAuthenticationChallenge,
+	verifyRegistrationResponse: vi.fn(),
 }))
 
 vi.mock("$lib/server/db", () => ({
@@ -52,15 +41,18 @@ vi.mock("$lib/server/helpers", () => ({
 	resolvePostAuthRedirect,
 }))
 
+vi.mock("$lib/server/registration-invite", () => ({
+	resolveRegistrationInvite,
+}))
+
 vi.mock("@simplewebauthn/server", () => ({
-	verifyAuthenticationResponse,
+	verifyRegistrationResponse,
 }))
 
 vi.mock("$lib/server/session", () => ({
 	appendSessionTokenToUrl,
 	resolveSessionCookieOptions,
 	setSessionCookie,
-	shouldUseSecureCookies,
 	signSessionToken,
 }))
 
@@ -72,22 +64,22 @@ vi.mock("drizzle-orm", () => ({
 	asc: vi.fn(value => value),
 	eq,
 	inArray: vi.fn(() => Symbol("inArray")),
-	sql,
 }))
 
 vi.mock("$lib/server/schema", () => ({
 	passkeys: {
 		id: "passkeys.id",
 		userId: "passkeys.userId",
-		publicKey: "passkeys.publicKey",
-		counter: "passkeys.counter",
-		transports: "passkeys.transports",
+	},
+	registrationInvitations: {
+		userId: "registration_invitations.user_id",
 	},
 	users: {
 		id: "users.id",
 		email: "users.email",
 		fullName: "users.fullName",
 		isActive: "users.isActive",
+		registrationChallenge: "users.registrationChallenge",
 	},
 	userRoles: {
 		userId: "user_roles.user_id",
@@ -101,27 +93,32 @@ vi.mock("$lib/server/schema", () => ({
 
 import { POST } from "./+server"
 
-describe("POST /api/auth/authentication/verify", () => {
+describe("POST /api/auth/registration/verify", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		getAuthenticationChallenge.mockReturnValue("challenge-1")
 		normalizeEmail.mockReturnValue("lead@example.com")
+		resolveRegistrationInvite.mockReturnValue(null)
 		expectedOrigin.mockReturnValue("http://auth.ex.localhost:5100")
 		expectedRpId.mockReturnValue("auth.ex.localhost")
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
-		verifyAuthenticationResponse.mockResolvedValue({
+		verifyRegistrationResponse.mockResolvedValue({
 			verified: true,
-			authenticationInfo: {
-				newCounter: 9,
+			registrationInfo: {
+				credential: {
+					id: "passkey-1",
+					publicKey: new Uint8Array([1, 2, 3]),
+					counter: 4,
+				},
+				credentialDeviceType: "singleDevice",
+				credentialBackedUp: false,
 			},
 		})
 		resolveSessionCookieOptions.mockReturnValue({
 			secure: false,
 			domain: "localhost",
 		})
-		shouldUseSecureCookies.mockReturnValue(false)
 		signSessionToken.mockResolvedValue({
 			token: "signed-session-token",
 			expiresAt: 123_456,
@@ -131,22 +128,23 @@ describe("POST /api/auth/authentication/verify", () => {
 		)
 	})
 
-	it("writes the session cookie with shared cookie options", async () => {
-		const passkeyRecord = {
-			passkeyId: "passkey-1",
-			publicKey: new Uint8Array([1, 2, 3]),
-			counter: 4,
-			transports: "[]",
-			userId: 7,
-			userEmail: "lead@example.com",
-			userFullName: "Factory Lead",
-			userIsActive: true,
+	it("returns the session token in the post-registration redirect url", async () => {
+		const user = {
+			id: 7,
+			email: "lead@example.com",
+			fullName: "Factory Lead",
+			isActive: true,
+			registrationChallenge: "challenge-1",
 		}
-		const selectChain = {
+		const existingPasskeySelect = {
 			from: vi.fn().mockReturnThis(),
-			innerJoin: vi.fn().mockReturnThis(),
 			where: vi.fn().mockReturnThis(),
-			get: vi.fn().mockResolvedValue(passkeyRecord),
+			get: vi.fn().mockResolvedValue(undefined),
+		}
+		const userSelect = {
+			from: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			get: vi.fn().mockResolvedValue(user),
 		}
 		const roleAssignmentsChain = {
 			from: vi.fn().mockReturnThis(),
@@ -160,41 +158,42 @@ describe("POST /api/auth/authentication/verify", () => {
 				},
 			]),
 		}
-		const updateWhere = vi.fn().mockResolvedValue(undefined)
-		const updateChain = {
-			set: vi.fn().mockReturnValue({
-				where: updateWhere,
-			}),
-		}
 		const db = {
 			select: vi
 				.fn()
-				.mockReturnValueOnce(selectChain)
+				.mockReturnValueOnce(userSelect)
+				.mockReturnValueOnce(existingPasskeySelect)
 				.mockReturnValueOnce(roleAssignmentsChain),
-			update: vi.fn(() => updateChain),
-		}
-		const cookies = {}
-		const request = new Request(
-			"http://auth.ex.localhost:5100/api/auth/authentication/verify",
-			{
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-				},
-				body: JSON.stringify({
-					email: "lead@example.com",
-					credential: {
-						id: "passkey-1",
-					},
-					next: "http://dashboard.ex.localhost:4173/",
+			insert: vi.fn(() => ({
+				values: vi.fn().mockResolvedValue(undefined),
+			})),
+			update: vi.fn(() => ({
+				set: vi.fn().mockReturnValue({
+					where: vi.fn().mockResolvedValue(undefined),
 				}),
-			}
-		)
-
+			})),
+		}
 		getDbOrThrow.mockReturnValue(db)
 
+		const cookies = {}
 		const response = await POST({
-			request,
+			request: new Request(
+				"http://auth.ex.localhost:5100/api/auth/registration/verify",
+				{
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+					},
+					body: JSON.stringify({
+						email: "lead@example.com",
+						credential: {
+							id: "passkey-1",
+							transports: [],
+						},
+						next: "http://dashboard.ex.localhost:4173/",
+					}),
+				}
+			),
 			locals: {
 				db: {} as never,
 			},
@@ -208,10 +207,6 @@ describe("POST /api/auth/authentication/verify", () => {
 			},
 		} as never)
 
-		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(
-			request,
-			"localhost"
-		)
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
 			"signed-session-token",

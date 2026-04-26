@@ -12,6 +12,7 @@ import {
 	resolveSessionSecret,
 } from "$lib/server/roles"
 import {
+	appendSessionTokenToUrl,
 	resolveSessionCookieOptions,
 	setSessionCookie,
 	signSessionToken,
@@ -171,12 +172,15 @@ export const POST: RequestHandler = async ({
 	)
 
 	const redirectTo = resolvePostAuthRedirect(next, request.url)
+	const redirectWithToken = redirectTo
+		? appendSessionTokenToUrl(redirectTo, session.token)
+		: null
 
 	return json({
-		message: redirectTo
+		message: redirectWithToken
 			? "Access granted"
 			: "Registration complete. You are signed in.",
-		redirectTo,
+		redirectTo: redirectWithToken,
 		user: {
 			id: user.id,
 			email: user.email,

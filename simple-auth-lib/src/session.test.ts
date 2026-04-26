@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+	appendSessionTokenToUrl,
 	clearSessionCookie,
+	readSessionToken,
 	resolveSessionCookieOptions,
 	sessionCookieName,
+	sessionTokenQueryParamName,
 	setSessionCookie,
 	shouldUseSecureCookies,
 	verifySessionToken,
@@ -150,5 +153,41 @@ describe("session helpers", () => {
 			sessionCookieName,
 			expect.objectContaining(options)
 		)
+	})
+
+	it("appends the session token to a redirect url", () => {
+		expect(
+			appendSessionTokenToUrl(
+				"https://dashboard.example.com/auth/callback?from=passkey",
+				"signed-token"
+			)
+		).toBe(
+			`https://dashboard.example.com/auth/callback?from=passkey&${sessionTokenQueryParamName}=signed-token`
+		)
+	})
+
+	it("reads the session token from the return url before cookies", () => {
+		const cookies = {
+			get: vi.fn(() => "cookie-token"),
+		}
+
+		expect(
+			readSessionToken(
+				`https://dashboard.example.com/auth/callback?${sessionTokenQueryParamName}=url-token`,
+				cookies
+			)
+		).toBe("url-token")
+		expect(cookies.get).not.toHaveBeenCalled()
+	})
+
+	it("falls back to the session cookie when the return url has no token", () => {
+		const cookies = {
+			get: vi.fn(() => "cookie-token"),
+		}
+
+		expect(readSessionToken("https://dashboard.example.com/", cookies)).toBe(
+			"cookie-token"
+		)
+		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
 	})
 })

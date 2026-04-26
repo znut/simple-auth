@@ -16,6 +16,7 @@ import {
 } from "$lib/server/roles"
 import { passkeys, users } from "$lib/server/schema"
 import {
+	appendSessionTokenToUrl,
 	resolveSessionCookieOptions,
 	setSessionCookie,
 	shouldUseSecureCookies,
@@ -167,10 +168,13 @@ export const POST: RequestHandler = async ({
 	)
 
 	const redirectTo = resolvePostAuthRedirect(next, request.url)
+	const redirectWithToken = redirectTo
+		? appendSessionTokenToUrl(redirectTo, session.token)
+		: null
 
 	return json({
-		message: redirectTo ? undefined : "Login successful",
-		redirectTo,
+		message: redirectWithToken ? undefined : "Login successful",
+		redirectTo: redirectWithToken,
 		user: {
 			id: passkeyRecord.userId,
 			email: passkeyRecord.userEmail,
