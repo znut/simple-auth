@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { config } from "$lib/server/config"
 	import { startRegistration } from "@simplewebauthn/browser"
 	import type { PageProps } from "./$types"
 
@@ -11,7 +10,7 @@
 	// svelte-ignore state_referenced_locally
 	let error = $state(data.inviteError ?? "")
 	let isWorking = $state(false)
-	const appName = config.appName
+	let appName = $derived(data.appName)
 
 	type ErrorPayload = {
 		message?: string

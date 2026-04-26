@@ -1,3 +1,4 @@
+import { config } from "$lib/server/config"
 import { getDbOrThrow } from "$lib/server/db"
 import { resolveRegistrationInvite } from "$lib/server/registration-invite"
 import type { PageServerLoad } from "./$types"
@@ -8,6 +9,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	if (!inviteNonce || !email) {
 		return {
+			appName: config.appName,
 			inviteNonce: "",
 			email: "",
 			inviteUser: null,
@@ -20,6 +22,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const invite = await resolveRegistrationInvite(db, email, inviteNonce)
 
 	return {
+		appName: config.appName,
 		inviteNonce,
 		email,
 		inviteUser: invite.ok
