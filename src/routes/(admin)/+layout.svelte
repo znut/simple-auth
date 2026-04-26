@@ -1,19 +1,10 @@
 <script lang="ts">
 	import { resolve } from "$app/paths"
 	import { page } from "$app/stores"
+	import type { LayoutProps } from "./$types"
 
-	export let data: {
-		appName: string
-		user: {
-			fullName: string
-			role: string
-			roleName: string
-			roles: {
-				key: string
-				name: string
-			}[]
-		}
-	}
+	let { data, children }: LayoutProps = $props()
+	const user = $derived(data.user)
 
 	const navItems = [
 		{ href: "/admin", label: "Users" },
@@ -47,16 +38,18 @@
 							<p class="text-primary text-lg font-black tracking-[-0.05em]">
 								{data.appName}
 							</p>
-							<p
-								class="text-base-content mt-1 truncate text-base font-black tracking-[-0.02em]"
-							>
-								{data.user.fullName}
-							</p>
-							<p
-								class="mt-1 text-[0.7rem] tracking-[0.12em] text-[color:var(--stitch-surface-muted)] uppercase"
-							>
-								{data.user.roleName}
-							</p>
+							{#if user}
+								<p
+									class="text-base-content mt-1 truncate text-base font-black tracking-[-0.02em]"
+								>
+									{user.fullName}
+								</p>
+								<p
+									class="mt-1 text-[0.7rem] tracking-[0.12em] text-[color:var(--stitch-surface-muted)] uppercase"
+								>
+									{user.roleName}
+								</p>
+							{/if}
 						</div>
 						<form action={signOutHref} class="shrink-0" method="GET">
 							<button
@@ -122,7 +115,7 @@
 		</aside>
 
 		<div class="flex-1 px-5 py-6 md:px-8 lg:px-10 lg:py-8">
-			<slot />
+			{@render children()}
 		</div>
 	</div>
 </div>

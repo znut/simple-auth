@@ -1,22 +1,7 @@
 <script lang="ts">
-	export let data: {
-		roles: {
-			key: string
-			name: string
-			description: string
-			isAdminRole: boolean
-			isSystem: boolean
-			createdAt: string
-			updatedAt: string
-			userCount: number
-		}[]
-	}
+	import type { PageProps } from "./$types"
 
-	export let form:
-		| {
-				message?: string
-		  }
-		| undefined
+	let { data, form }: PageProps = $props()
 
 	function formatDate(value: string) {
 		return new Intl.DateTimeFormat("en-US", {
@@ -25,7 +10,9 @@
 		}).format(new Date(value))
 	}
 
-	const adminRoles = data.roles.filter(role => role.isAdminRole).length
+	const adminRoles = $derived(
+		data.roles.filter(role => role.isAdminRole).length
+	)
 </script>
 
 <svelte:head>

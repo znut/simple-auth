@@ -1,53 +1,28 @@
 <script lang="ts">
-	export let data: {
-		currentUserId: number | null
-		managedUsers: {
-			id: number
-			email: string
-			fullName: string
-			role: string
-			roleName: string
-			roles: {
-				key: string
-				name: string
-			}[]
-			canAccessAdmin: boolean
-			isActive: boolean
-			createdAt: string
-			lastLoginAt: string | null
-		}[]
-		availableRoles: {
-			key: string
-			name: string
-			description: string
-			isSystem: boolean
-			createdAt: string
-			updatedAt: string
-		}[]
-	}
+	import type { PageProps } from "./$types"
 
-	export let form:
-		| {
-				message?: string
-				registrationLink?: string
-		  }
-		| undefined
+	let { data, form }: PageProps = $props()
 
-	const activeUsers = data.managedUsers.filter(user => user.isActive).length
-	const adminUsers = data.managedUsers.filter(
-		user => user.canAccessAdmin && user.isActive
-	).length
-	const sortedManagedUsers = [...data.managedUsers].sort((left, right) => {
-		if (left.id === data.currentUserId) {
-			return -1
-		}
+	const activeUsers = $derived(
+		data.managedUsers.filter(user => user.isActive).length
+	)
+	const adminUsers = $derived(
+		data.managedUsers.filter(user => user.canAccessAdmin && user.isActive)
+			.length
+	)
+	const sortedManagedUsers = $derived(
+		[...data.managedUsers].sort((left, right) => {
+			if (left.id === data.currentUserId) {
+				return -1
+			}
 
-		if (right.id === data.currentUserId) {
-			return 1
-		}
+			if (right.id === data.currentUserId) {
+				return 1
+			}
 
-		return 0
-	})
+			return 0
+		})
+	)
 
 	function formatDate(value: string | null) {
 		if (!value) {

@@ -7,34 +7,20 @@
 		WebAuthnAbortService,
 	} from "@simplewebauthn/browser"
 	import { onDestroy, onMount } from "svelte"
+	import type { PageProps } from "./$types"
 
-	export let data: {
-		appName: string
-		canBootstrapAdmin: boolean
-		next: string | null
-		adminRoleKey: string
-		user: {
-			id: number
-			email: string
-			fullName: string
-			role: string
-			roleName: string
-			roles: {
-				key: string
-				name: string
-			}[]
-			isActive: boolean
-		} | null
-	}
+	let { data }: PageProps = $props()
 
-	let email = data.user?.email ?? ""
-	let fullName = ""
-	let message = ""
-	let error = ""
-	let isWorking = false
-	let activeUser = data.user
-	let hasInitializedAutofill = false
-	let automaticLoginTimer: ReturnType<typeof setTimeout> | null = null
+	// svelte-ignore state_referenced_locally
+	let email = $state(data.user?.email ?? "")
+	let fullName = $state("")
+	let message = $state("")
+	let error = $state("")
+	let isWorking = $state(false)
+	// svelte-ignore state_referenced_locally
+	let activeUser = $state(data.user)
+	let hasInitializedAutofill = $state(false)
+	let automaticLoginTimer = $state<ReturnType<typeof setTimeout> | null>(null)
 
 	type ErrorPayload = {
 		message?: string
@@ -62,7 +48,7 @@
 		user?: SignedInUser
 	}
 
-	const next = data.next
+	const next = $derived(data.next)
 	const signOutHref = "/api/auth/logout?next=/"
 
 	function canOpenAdmin(user: typeof activeUser) {

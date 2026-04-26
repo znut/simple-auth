@@ -1,34 +1,17 @@
 <script lang="ts">
 	import { config } from "$lib/server/config"
 	import { startRegistration } from "@simplewebauthn/browser"
+	import type { PageProps } from "./$types"
 
-	export let data: {
-		inviteNonce: string
-		email: string
-		inviteUser: {
-			fullName: string
-			email: string
-		} | null
-		inviteError: string | null
-		user: {
-			id: number
-			email: string
-			fullName: string
-			role: string
-			roleName: string
-			roles: {
-				key: string
-				name: string
-			}[]
-			isActive: boolean
-		} | null
-	}
+	let { data }: PageProps = $props()
 
-	let activeUser = data.user
-	let message = ""
-	let error = data.inviteError ?? ""
-	let isWorking = false
-	let appName = config.appName
+	// svelte-ignore state_referenced_locally
+	let activeUser = $state(data.user)
+	let message = $state("")
+	// svelte-ignore state_referenced_locally
+	let error = $state(data.inviteError ?? "")
+	let isWorking = $state(false)
+	const appName = config.appName
 
 	type ErrorPayload = {
 		message?: string
