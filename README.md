@@ -12,6 +12,32 @@ After a successful login or registration, Simple Auth now:
 
 This avoids relying on a shared parent-domain cookie between the auth app and the consumer app.
 
+If `RETURN_URL_ALLOWLIST` is undefined, Simple Auth only allows:
+
+1. Relative URLs on the auth app itself.
+2. Absolute URLs on the same top-domain family, such as `auth.example.com` to `app.example.com`.
+
+If you need to allow returns outside that default boundary, set `RETURN_URL_ALLOWLIST`.
+
+Example `wrangler.jsonc` config:
+
+```jsonc
+{
+	"vars": {
+		"RETURN_URL_ALLOWLIST": "http://dashboard.ex.localhost:4173/auth/callback",
+	},
+	"env": {
+		"production": {
+			"vars": {
+				"RETURN_URL_ALLOWLIST": "https://app.example.com/auth/callback",
+			},
+		},
+	},
+}
+```
+
+Use a comma-separated list for multiple URLs. Relative URLs on the auth app itself are still allowed automatically. Any cross-origin `next` URL that is not on the effective allowlist is ignored.
+
 Example redirect:
 
 ```text

@@ -1,3 +1,4 @@
+import { resolveAllowReturnUrls } from "$lib/server/config"
 import { getDbOrThrow } from "$lib/server/db"
 import {
 	expectedOrigin,
@@ -171,7 +172,11 @@ export const POST: RequestHandler = async ({
 		sessionCookieOptions
 	)
 
-	const redirectTo = resolvePostAuthRedirect(next, request.url)
+	const redirectTo = resolvePostAuthRedirect(
+		next,
+		request.url,
+		resolveAllowReturnUrls(platform?.env)
+	)
 	const redirectWithToken = redirectTo
 		? appendSessionTokenToUrl(redirectTo, session.token)
 		: null

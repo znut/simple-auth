@@ -8,6 +8,7 @@ const {
 	expectedRpId,
 	getDbOrThrow,
 	normalizeEmail,
+	resolveAllowReturnUrls,
 	resolvePostAuthRedirect,
 	resolveRegistrationInvite,
 	resolveSessionCookieOptions,
@@ -22,6 +23,7 @@ const {
 	expectedRpId: vi.fn(),
 	getDbOrThrow: vi.fn(),
 	normalizeEmail: vi.fn(),
+	resolveAllowReturnUrls: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
 	resolveRegistrationInvite: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
@@ -32,6 +34,10 @@ const {
 
 vi.mock("$lib/server/db", () => ({
 	getDbOrThrow,
+}))
+
+vi.mock("$lib/server/config", () => ({
+	resolveAllowReturnUrls,
 }))
 
 vi.mock("$lib/server/helpers", () => ({
@@ -100,6 +106,9 @@ describe("POST /api/auth/registration/verify", () => {
 		resolveRegistrationInvite.mockReturnValue(null)
 		expectedOrigin.mockReturnValue("http://auth.ex.localhost:5100")
 		expectedRpId.mockReturnValue("auth.ex.localhost")
+		resolveAllowReturnUrls.mockReturnValue([
+			"http://dashboard.ex.localhost:4173/auth/callback",
+		])
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
@@ -201,6 +210,8 @@ describe("POST /api/auth/registration/verify", () => {
 			platform: {
 				env: {
 					ADMIN_ROLE_KEY: "owner",
+					RETURN_URL_ALLOWLIST:
+						"http://dashboard.ex.localhost:4173/auth/callback",
 					SESSION_COOKIE_DOMAIN: "localhost",
 					SESSION_SECRET: "dev-session-secret",
 				},
@@ -220,6 +231,12 @@ describe("POST /api/auth/registration/verify", () => {
 			"http://dashboard.ex.localhost:4173/",
 			"signed-session-token"
 		)
+		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
+			ADMIN_ROLE_KEY: "owner",
+			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
+			SESSION_COOKIE_DOMAIN: "localhost",
+			SESSION_SECRET: "dev-session-secret",
+		})
 		await expect(response.json()).resolves.toMatchObject({
 			redirectTo:
 				"http://dashboard.ex.localhost:4173/?simple_auth_token=signed-session-token",

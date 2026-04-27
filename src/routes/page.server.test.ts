@@ -1,18 +1,33 @@
 import { describe, expect, it, vi } from "vitest"
 
-const { appendSessionTokenToUrl, getDbOrThrow, resolvePostAuthRedirect, sql } =
-	vi.hoisted(() => ({
-		appendSessionTokenToUrl: vi.fn(),
-		getDbOrThrow: vi.fn(),
-		resolvePostAuthRedirect: vi.fn(),
-		sql: vi.fn(() => ({
-			mapWith: vi.fn(() => "count-expression"),
-		})),
-	}))
+const {
+	appendSessionTokenToUrl,
+	getDbOrThrow,
+	resolveAllowReturnUrls,
+	resolvePostAuthRedirect,
+	sql,
+} = vi.hoisted(() => ({
+	appendSessionTokenToUrl: vi.fn(),
+	getDbOrThrow: vi.fn(),
+	resolveAllowReturnUrls: vi.fn(),
+	resolvePostAuthRedirect: vi.fn(),
+	sql: vi.fn(() => ({
+		mapWith: vi.fn(() => "count-expression"),
+	})),
+}))
 
 vi.mock("$lib/server/db", () => ({
 	getDbOrThrow,
 }))
+
+vi.mock("$lib/server/config", async importOriginal => {
+	const actual = await importOriginal<typeof import("$lib/server/config")>()
+
+	return {
+		...actual,
+		resolveAllowReturnUrls,
+	}
+})
 
 vi.mock("$lib/server/helpers", () => ({
 	resolvePostAuthRedirect,
@@ -41,12 +56,16 @@ describe("auth landing page load", () => {
 			})),
 		}
 		getDbOrThrow.mockReturnValue(db)
+		resolveAllowReturnUrls.mockReturnValue([])
 		resolvePostAuthRedirect.mockReturnValue(null)
 
 		const result = await load({
 			locals: {
 				db: {} as never,
 				user: null,
+			},
+			platform: {
+				env: {},
 			},
 			url: new URL("https://auth.example.com/"),
 		} as never)
@@ -66,12 +85,16 @@ describe("auth landing page load", () => {
 			})),
 		}
 		getDbOrThrow.mockReturnValue(db)
+		resolveAllowReturnUrls.mockReturnValue([])
 		resolvePostAuthRedirect.mockReturnValue(null)
 
 		const result = await load({
 			locals: {
 				db: {} as never,
 				user: null,
+			},
+			platform: {
+				env: {},
 			},
 			url: new URL("https://auth.example.com/"),
 		} as never)
@@ -82,6 +105,9 @@ describe("auth landing page load", () => {
 	})
 
 	it("appends the active session token when redirecting an authenticated user to next", async () => {
+		resolveAllowReturnUrls.mockReturnValue([
+			"https://dashboard.example.com/auth/callback",
+		])
 		resolvePostAuthRedirect.mockReturnValue(
 			"https://dashboard.example.com/auth/callback?next=%2F"
 		)
@@ -104,6 +130,11 @@ describe("auth landing page load", () => {
 						isActive: true,
 					},
 				},
+				platform: {
+					env: {
+						RETURN_URL_ALLOWLIST: "https://dashboard.example.com/auth/callback",
+					},
+				},
 				url: new URL(
 					"https://auth.example.com/?next=https%3A%2F%2Fdashboard.example.com%2Fauth%2Fcallback%3Fnext%3D%252F"
 				),
@@ -118,5 +149,8 @@ describe("auth landing page load", () => {
 			"https://dashboard.example.com/auth/callback?next=%2F",
 			"fresh-session-token"
 		)
+		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
+			RETURN_URL_ALLOWLIST: "https://dashboard.example.com/auth/callback",
+		})
 	})
 })

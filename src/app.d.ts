@@ -16,6 +16,7 @@ declare global {
 		interface Platform {
 			env: {
 				DB?: D1Database
+				RETURN_URL_ALLOWLIST?: string
 				SESSION_COOKIE_DOMAIN?: string
 				SESSION_SECRET?: string
 			}

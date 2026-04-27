@@ -10,6 +10,7 @@
 		"binding": "ASSETS",
 	},
 	"vars": {
+		"RETURN_URL_ALLOWLIST": "http://dashboard.ex.localhost:4173/auth/callback",
 		"SESSION_COOKIE_DOMAIN": ".ex.localhost",
 	},
 	"observability": {
@@ -28,6 +29,7 @@
 		"production": {
 			"workers_dev": false,
 			"vars": {
+				"RETURN_URL_ALLOWLIST": "https://app.example.com/auth/callback",
 				"SESSION_COOKIE_DOMAIN": ".example.com",
 			},
 			"routes": [

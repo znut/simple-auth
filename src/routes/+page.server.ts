@@ -1,4 +1,4 @@
-import { config } from "$lib/server/config"
+import { config, resolveAllowReturnUrls } from "$lib/server/config"
 import { getDbOrThrow } from "$lib/server/db"
 import { resolvePostAuthRedirect } from "$lib/server/helpers"
 import { appendSessionTokenToUrl } from "$lib/server/session"
@@ -7,8 +7,12 @@ import { redirect } from "@sveltejs/kit"
 import { sql } from "drizzle-orm"
 import type { PageServerLoad } from "./$types"
 
-export const load: PageServerLoad = async ({ locals, url }) => {
-	const next = resolvePostAuthRedirect(url.searchParams.get("next"), url)
+export const load: PageServerLoad = async ({ locals, platform, url }) => {
+	const next = resolvePostAuthRedirect(
+		url.searchParams.get("next"),
+		url,
+		resolveAllowReturnUrls(platform?.env)
+	)
 
 	if (locals.user && next) {
 		throw redirect(
