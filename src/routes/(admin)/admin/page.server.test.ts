@@ -13,7 +13,9 @@ const {
 	eq: vi.fn(() => Symbol("eq")),
 	getDbOrThrow: vi.fn(),
 	normalizeEmail: vi.fn(),
-	sql: vi.fn(() => "CURRENT_TIMESTAMP"),
+	sql: vi.fn(() => ({
+		mapWith: vi.fn(() => "CURRENT_TIMESTAMP"),
+	})),
 }))
 
 vi.mock("$lib/server/db", () => ({
@@ -188,5 +190,152 @@ describe("/admin page actions", () => {
 		} as never)) as { status: number }
 
 		expect(result.status).toBe(409)
+	})
+
+	it("allows the active user to add another role while keeping owner", async () => {
+		const params = new URLSearchParams()
+		params.set("userId", "1")
+		params.set("fullName", "Owner User")
+		params.append("roleKeys", "owner")
+		params.append("roleKeys", "user")
+
+		const getQueue = [
+			{
+				key: "owner",
+				name: "Owner",
+				description: "Full access",
+				isSystem: true,
+			},
+			{
+				key: "user",
+				name: "User",
+				description: "Standard access",
+				isSystem: true,
+			},
+			{
+				id: 1,
+				email: "owner@example.com",
+				fullName: "Owner User",
+				isActive: true,
+				approvedBy: 2,
+				approvedAt: "2026-04-27T00:00:00.000Z",
+			},
+		]
+		const orderByQueue = [[{ userId: 1, roleKey: "owner", roleName: "Owner" }]]
+		const updateWhere = vi.fn().mockResolvedValue(undefined)
+		const updateSet = vi.fn(() => ({
+			where: updateWhere,
+		}))
+		const insertValues = vi.fn().mockResolvedValue(undefined)
+		const deleteWhere = vi.fn().mockResolvedValue(undefined)
+		const db = {
+			select: vi.fn(() => ({
+				from: vi.fn().mockReturnThis(),
+				innerJoin: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				orderBy: vi.fn(() => Promise.resolve(orderByQueue.shift())),
+				get: vi.fn(() => Promise.resolve(getQueue.shift())),
+			})),
+			update: vi.fn(() => ({
+				set: updateSet,
+			})),
+			delete: vi.fn(() => ({
+				where: deleteWhere,
+			})),
+			insert: vi.fn(() => ({
+				values: insertValues,
+			})),
+		}
+		getDbOrThrow.mockReturnValue(db)
+
+		const result = await actions.updateUser({
+			request: new Request("https://auth.example.com/admin", {
+				method: "POST",
+				body: params,
+			}),
+			locals: {
+				db: {} as never,
+				user: {
+					id: 1,
+					role: "owner",
+					roles: [{ key: "owner", name: "Owner" }],
+				},
+			},
+		} as never)
+
+		expect(result).toEqual({ message: "User updated" })
+		expect(db.update).toHaveBeenCalled()
+		expect(insertValues).toHaveBeenCalledWith([
+			{ userId: 1, roleKey: "owner" },
+			{ userId: 1, roleKey: "user" },
+		])
+	})
+
+	it("blocks the active user from removing owner from themselves", async () => {
+		const params = new URLSearchParams()
+		params.set("userId", "1")
+		params.set("fullName", "Owner User")
+		params.append("roleKeys", "user")
+
+		const getQueue = [
+			{
+				key: "user",
+				name: "User",
+				description: "Standard access",
+				isSystem: true,
+			},
+			{
+				id: 1,
+				email: "owner@example.com",
+				fullName: "Owner User",
+				isActive: true,
+				approvedBy: 2,
+				approvedAt: "2026-04-27T00:00:00.000Z",
+			},
+			{ count: 1 },
+		]
+		const orderByQueue = [[{ userId: 1, roleKey: "owner", roleName: "Owner" }]]
+		const db = {
+			select: vi.fn(() => ({
+				from: vi.fn().mockReturnThis(),
+				innerJoin: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				orderBy: vi.fn(() => Promise.resolve(orderByQueue.shift())),
+				get: vi.fn(() => Promise.resolve(getQueue.shift())),
+			})),
+			update: vi.fn(() => ({
+				set: vi.fn(() => ({
+					where: vi.fn().mockResolvedValue(undefined),
+				})),
+			})),
+			delete: vi.fn(() => ({
+				where: vi.fn().mockResolvedValue(undefined),
+			})),
+			insert: vi.fn(() => ({
+				values: vi.fn().mockResolvedValue(undefined),
+			})),
+		}
+		getDbOrThrow.mockReturnValue(db)
+
+		const result = (await actions.updateUser({
+			request: new Request("https://auth.example.com/admin", {
+				method: "POST",
+				body: params,
+			}),
+			locals: {
+				db: {} as never,
+				user: {
+					id: 1,
+					role: "owner",
+					roles: [{ key: "owner", name: "Owner" }],
+				},
+			},
+		} as never)) as { status: number; data: { message: string } }
+
+		expect(result.status).toBe(400)
+		expect(result.data.message).toBe(
+			"You cannot remove the owner role from your active session."
+		)
+		expect(db.update).not.toHaveBeenCalled()
 	})
 })

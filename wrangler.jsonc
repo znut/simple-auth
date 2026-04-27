@@ -3,9 +3,7 @@
 	"name": "simple-auth",
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-04-21",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": false,
 	"assets": {
 		"directory": ".svelte-kit/cloudflare",

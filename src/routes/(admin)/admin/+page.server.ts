@@ -362,11 +362,11 @@ export const actions: Actions = {
 
 		if (
 			userId === locals.user!.id &&
-			selectedRoleKeys.join("|") !==
-				(coverage.currentUser?.roles.map(role => role.key).join("|") ?? "")
+			coverage.currentUser?.canAccessAdmin &&
+			!rolesHaveAdminAccess(selectedRoleKeys, adminRoleKey)
 		) {
 			return fail(400, {
-				message: "You cannot change roles for your active session.",
+				message: "You cannot remove the owner role from your active session.",
 			})
 		}
 
