@@ -4,7 +4,6 @@
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-04-21",
 	"compatibility_flags": ["nodejs_compat"],
-	"workers_dev": false,
 	"assets": {
 		"directory": ".svelte-kit/cloudflare",
 		"binding": "ASSETS",
@@ -27,23 +26,16 @@
 	],
 	"env": {
 		"production": {
-			"workers_dev": false,
+			"name": "simple-auth",
 			"vars": {
 				"RETURN_URL_ALLOWLIST": "https://app.example.com/auth/callback",
 				"SESSION_COOKIE_DOMAIN": ".example.com",
 			},
-			"routes": [
-				{
-					"pattern": "auth.example.com",
-					"custom_domain": true,
-				},
-			],
 			"d1_databases": [
 				{
 					"binding": "DB",
 					"database_name": "simple-auth-web",
 					"database_id": "00000000-0000-0000-0000-000000000010",
-					"preview_database_id": "00000000-0000-0000-0000-000000000011",
 					"migrations_dir": "db/migrations",
 				},
 			],
