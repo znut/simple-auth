@@ -17,7 +17,7 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: "vite dev",
+		command: "bun run db:migrate & bun run dev",
 		url: "http://auth.ex.localhost:5100",
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,

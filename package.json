@@ -8,6 +8,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"build:lib": "bun run --cwd simple-auth-lib build",
+		"deploy:init": "bun scripts/init.mjs",
 		"preview": "bun run build && wrangler dev --config wrangler.jsonc --ip 0.0.0.0 --port 5100",
 		"format": "prettier --write .",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

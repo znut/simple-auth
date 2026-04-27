@@ -109,3 +109,25 @@ const session = token
 ```
 
 `readSessionToken(...)` checks `simple_auth_token` in the URL first, then falls back to the `simple_auth_session` cookie.
+
+## Deploy
+
+Run the deployment initializer before your first production deploy:
+
+```bash
+bun run deploy:init
+```
+
+It updates:
+
+- `wrangler.jsonc` production worker name, D1 name/id, and `SESSION_COOKIE_DOMAIN`
+- `package.json` migration scripts with the production D1 database name
+- `src/lib/server/config.ts` app name shown in the website
+
+Deployment checklist:
+
+- Set `SESSION_SECRET` in Cloudflare Worker `Settings -> Variables and Secrets -> Secrets`
+- Configure the deploy build command as `bun run build`
+- Configure the deploy command as `npx wrangler deploy --env production`
+- Set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in GitHub if you want migrations from GitHub Actions
+- If those GitHub secrets are not configured, run `bun run db:migrate:remote` locally with Wrangler CLI instead
