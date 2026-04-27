@@ -3,7 +3,9 @@
 	"name": "simple-auth",
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-04-21",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"workers_dev": false,
 	"assets": {
 		"directory": ".svelte-kit/cloudflare",
@@ -11,7 +13,6 @@
 	},
 	"vars": {
 		"SESSION_COOKIE_DOMAIN": ".ex.localhost",
-		"SESSION_SECRET": "dev-session-secret",
 	},
 	"observability": {
 		"enabled": true,
@@ -30,7 +31,6 @@
 			"workers_dev": false,
 			"vars": {
 				"SESSION_COOKIE_DOMAIN": ".example.com",
-				"SESSION_SECRET": "remove-this-and-put-in-secret-store",
 			},
 			"routes": [
 				{

@@ -18,6 +18,7 @@ import { and, eq } from "drizzle-orm"
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null
+	event.locals.sessionToken = null
 	const sessionCookieOptions = resolveSessionCookieOptions(
 		event.url,
 		event.platform?.env.SESSION_COOKIE_DOMAIN
@@ -83,6 +84,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					refreshedSession.expiresAt,
 					sessionCookieOptions
 				)
+				event.locals.sessionToken = refreshedSession.token
 			} else {
 				clearSessionCookie(event.cookies, sessionCookieOptions)
 			}

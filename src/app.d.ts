@@ -5,6 +5,7 @@ declare global {
 	namespace App {
 		interface Locals {
 			db?: AppDatabase
+			sessionToken: string | null
 			user:
 				| (SessionUser & {
 						isActive: boolean
