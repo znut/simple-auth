@@ -8,6 +8,13 @@
       "when": 1776868977702,
       "tag": "0000_dry_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777282807407,
+      "tag": "0001_parched_phalanx",
+      "breakpoints": true
     }
   ]
 }

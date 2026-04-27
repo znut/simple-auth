@@ -97,7 +97,23 @@ export const passkeys = sqliteTable(
 	table => [index("idx_passkeys_user_id").on(table.userId)]
 )
 
+export const authSessionCodes = sqliteTable(
+	"auth_session_codes",
+	{
+		codeHash: text().primaryKey(),
+		token: text().notNull(),
+		returnUrl: text().notNull(),
+		expiresAt: text().notNull(),
+		createdAt: text().notNull().$defaultFn(createTimestamp),
+	},
+	table => [
+		index("idx_auth_session_codes_expires_at").on(table.expiresAt),
+		index("idx_auth_session_codes_return_url").on(table.returnUrl),
+	]
+)
+
 export const schema = {
+	authSessionCodes,
 	roles,
 	users,
 	userRoles,

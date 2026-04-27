@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 import {
-	appendSessionTokenToUrl,
 	clearSessionCookie,
+	readSessionExchangeCode,
 	readSessionToken,
+	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
 	sessionCookieName,
-	sessionTokenQueryParamName,
 	setSessionCookie,
 	shouldUseSecureCookies,
 	verifySessionToken,
@@ -155,32 +155,21 @@ describe("session helpers", () => {
 		)
 	})
 
-	it("appends the session token to a redirect url", () => {
-		expect(
-			appendSessionTokenToUrl(
-				"https://dashboard.example.com/auth/callback?from=passkey",
-				"signed-token"
-			)
-		).toBe(
-			`https://dashboard.example.com/auth/callback?from=passkey&${sessionTokenQueryParamName}=signed-token`
-		)
-	})
-
-	it("reads the session token from the return url before cookies", () => {
+	it("ignores session tokens in return urls", () => {
 		const cookies = {
 			get: vi.fn(() => "cookie-token"),
 		}
 
 		expect(
 			readSessionToken(
-				`https://dashboard.example.com/auth/callback?${sessionTokenQueryParamName}=url-token`,
+				"https://dashboard.example.com/auth/callback?simple_auth_token=url-token",
 				cookies
 			)
-		).toBe("url-token")
-		expect(cookies.get).not.toHaveBeenCalled()
+		).toBe("cookie-token")
+		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
 	})
 
-	it("falls back to the session cookie when the return url has no token", () => {
+	it("reads the session token from the cookie", () => {
 		const cookies = {
 			get: vi.fn(() => "cookie-token"),
 		}
@@ -189,5 +178,21 @@ describe("session helpers", () => {
 			"cookie-token"
 		)
 		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
+	})
+
+	it("reads one-time session exchange codes from return urls", () => {
+		expect(
+			readSessionExchangeCode(
+				"https://dashboard.example.com/auth/callback?simple_auth_code=exchange-code"
+			)
+		).toBe("exchange-code")
+	})
+
+	it("removes one-time session exchange codes from return urls", () => {
+		expect(
+			removeSessionExchangeCodeFromUrl(
+				"https://dashboard.example.com/auth/callback?next=%2F&simple_auth_code=exchange-code"
+			)
+		).toBe("https://dashboard.example.com/auth/callback?next=%2F")
 	})
 })

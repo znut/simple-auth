@@ -13,7 +13,11 @@ import {
 	resolveSessionSecret,
 } from "$lib/server/roles"
 import {
-	appendSessionTokenToUrl,
+	appendSessionExchangeCodeToUrl,
+	createSessionExchangeCode,
+} from "$lib/server/session-exchange-code"
+import {
+	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
 	setSessionCookie,
 	signSessionToken,
@@ -177,15 +181,26 @@ export const POST: RequestHandler = async ({
 		request.url,
 		resolveAllowReturnUrls(platform?.env)
 	)
-	const redirectWithToken = redirectTo
-		? appendSessionTokenToUrl(redirectTo, session.token)
+	const returnUrl = redirectTo
+		? removeSessionExchangeCodeFromUrl(redirectTo)
+		: null
+	const redirectWithCode = returnUrl
+		? appendSessionExchangeCodeToUrl(
+				returnUrl,
+				(
+					await createSessionExchangeCode(db, {
+						returnUrl,
+						token: session.token,
+					})
+				).code
+			)
 		: null
 
 	return json({
-		message: redirectWithToken
+		message: redirectWithCode
 			? "Access granted"
 			: "Registration complete. You are signed in.",
-		redirectTo: redirectWithToken,
+		redirectTo: redirectWithCode,
 		user: {
 			id: user.id,
 			email: user.email,

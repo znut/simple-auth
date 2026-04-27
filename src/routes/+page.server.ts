@@ -1,7 +1,11 @@
 import { config, resolveAllowReturnUrls } from "$lib/server/config"
 import { getDbOrThrow } from "$lib/server/db"
 import { resolvePostAuthRedirect } from "$lib/server/helpers"
-import { appendSessionTokenToUrl } from "$lib/server/session"
+import {
+	appendSessionExchangeCodeToUrl,
+	createSessionExchangeCode,
+} from "$lib/server/session-exchange-code"
+import { removeSessionExchangeCodeFromUrl } from "$lib/server/session"
 import { users } from "$lib/server/schema"
 import { redirect } from "@sveltejs/kit"
 import { sql } from "drizzle-orm"
@@ -15,11 +19,19 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	)
 
 	if (locals.user && next) {
+		if (!locals.sessionToken) {
+			throw redirect(303, next)
+		}
+
+		const returnUrl = removeSessionExchangeCodeFromUrl(next)
+		const exchange = await createSessionExchangeCode(getDbOrThrow(locals.db), {
+			returnUrl,
+			token: locals.sessionToken,
+		})
+
 		throw redirect(
 			303,
-			locals.sessionToken
-				? appendSessionTokenToUrl(next, locals.sessionToken)
-				: next
+			appendSessionExchangeCodeToUrl(returnUrl, exchange.code)
 		)
 	}
 

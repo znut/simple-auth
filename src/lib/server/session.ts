@@ -1,11 +1,11 @@
 import {
-	appendSessionTokenToUrl,
 	clearSessionCookie,
 	readSessionToken,
+	removeSessionExchangeCodeFromUrl,
+	sessionExchangeCodeQueryParamName,
 	resolveSessionCookieOptions,
 	sessionCookieName,
 	sessionDurationMs,
-	sessionTokenQueryParamName,
 	setSessionCookie,
 	shouldUseSecureCookies,
 	type SessionCookieOptions,
@@ -16,13 +16,13 @@ import {
 } from "@znut/simple-auth-lib"
 
 export {
-	appendSessionTokenToUrl,
 	clearSessionCookie,
 	readSessionToken,
+	removeSessionExchangeCodeFromUrl,
+	sessionExchangeCodeQueryParamName,
 	resolveSessionCookieOptions,
 	sessionCookieName,
 	sessionDurationMs,
-	sessionTokenQueryParamName,
 	setSessionCookie,
 	shouldUseSecureCookies,
 	verifySessionToken,

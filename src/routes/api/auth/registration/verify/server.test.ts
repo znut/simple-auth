@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-	appendSessionTokenToUrl,
+	appendSessionExchangeCodeToUrl,
+	createSessionExchangeCode,
 	createTimestamp,
 	eq,
 	expectedOrigin,
 	expectedRpId,
 	getDbOrThrow,
 	normalizeEmail,
+	removeSessionExchangeCodeFromUrl,
 	resolveAllowReturnUrls,
 	resolvePostAuthRedirect,
 	resolveRegistrationInvite,
@@ -16,13 +18,15 @@ const {
 	signSessionToken,
 	verifyRegistrationResponse,
 } = vi.hoisted(() => ({
-	appendSessionTokenToUrl: vi.fn(),
+	appendSessionExchangeCodeToUrl: vi.fn(),
+	createSessionExchangeCode: vi.fn(),
 	createTimestamp: vi.fn(() => "2026-04-22T09:26:00.000Z"),
 	eq: vi.fn(() => Symbol("eq")),
 	expectedOrigin: vi.fn(),
 	expectedRpId: vi.fn(),
 	getDbOrThrow: vi.fn(),
 	normalizeEmail: vi.fn(),
+	removeSessionExchangeCodeFromUrl: vi.fn(),
 	resolveAllowReturnUrls: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
 	resolveRegistrationInvite: vi.fn(),
@@ -56,10 +60,15 @@ vi.mock("@simplewebauthn/server", () => ({
 }))
 
 vi.mock("$lib/server/session", () => ({
-	appendSessionTokenToUrl,
+	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
 	setSessionCookie,
 	signSessionToken,
+}))
+
+vi.mock("$lib/server/session-exchange-code", () => ({
+	appendSessionExchangeCodeToUrl,
+	createSessionExchangeCode,
 }))
 
 vi.mock("$lib/server/time", () => ({
@@ -112,6 +121,9 @@ describe("POST /api/auth/registration/verify", () => {
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
+		removeSessionExchangeCodeFromUrl.mockReturnValue(
+			"http://dashboard.ex.localhost:4173/"
+		)
 		verifyRegistrationResponse.mockResolvedValue({
 			verified: true,
 			registrationInfo: {
@@ -132,12 +144,16 @@ describe("POST /api/auth/registration/verify", () => {
 			token: "signed-session-token",
 			expiresAt: 123_456,
 		})
-		appendSessionTokenToUrl.mockImplementation(
-			(url: string, token: string) => `${url}?simple_auth_token=${token}`
+		createSessionExchangeCode.mockResolvedValue({
+			code: "exchange-code",
+			expiresAt: "2026-04-22T09:28:00.000Z",
+		})
+		appendSessionExchangeCodeToUrl.mockReturnValue(
+			"http://dashboard.ex.localhost:4173/?simple_auth_code=exchange-code"
 		)
 	})
 
-	it("returns the session token in the post-registration redirect url", async () => {
+	it("returns the post-registration redirect url with an exchange code", async () => {
 		const user = {
 			id: 7,
 			email: "lead@example.com",
@@ -227,19 +243,23 @@ describe("POST /api/auth/registration/verify", () => {
 				domain: "localhost",
 			}
 		)
-		expect(appendSessionTokenToUrl).toHaveBeenCalledWith(
-			"http://dashboard.ex.localhost:4173/",
-			"signed-session-token"
-		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			ADMIN_ROLE_KEY: "owner",
 			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
 			SESSION_COOKIE_DOMAIN: "localhost",
 			SESSION_SECRET: "dev-session-secret",
 		})
+		expect(createSessionExchangeCode).toHaveBeenCalledWith(db, {
+			returnUrl: "http://dashboard.ex.localhost:4173/",
+			token: "signed-session-token",
+		})
+		expect(appendSessionExchangeCodeToUrl).toHaveBeenCalledWith(
+			"http://dashboard.ex.localhost:4173/",
+			"exchange-code"
+		)
 		await expect(response.json()).resolves.toMatchObject({
 			redirectTo:
-				"http://dashboard.ex.localhost:4173/?simple_auth_token=signed-session-token",
+				"http://dashboard.ex.localhost:4173/?simple_auth_code=exchange-code",
 		})
 	})
 })

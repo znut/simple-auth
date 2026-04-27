@@ -1,5 +1,5 @@
 export const sessionCookieName = "simple_auth_session"
-export const sessionTokenQueryParamName = "simple_auth_token"
+export const sessionExchangeCodeQueryParamName = "simple_auth_code"
 export const sessionDurationMs = 1000 * 60 * 60 * 12
 
 export interface SessionRole {
@@ -183,6 +183,13 @@ export async function verifySessionToken(token: string, secret: string) {
 	return payload
 }
 
+export function readSessionToken(
+	_value: URL | Request | string,
+	cookies?: ReadableCookieStore
+) {
+	return cookies?.get(sessionCookieName) ?? null
+}
+
 function resolveUrl(value: URL | Request | string) {
 	return value instanceof URL
 		? value
@@ -191,29 +198,20 @@ function resolveUrl(value: URL | Request | string) {
 			: new URL(value)
 }
 
-export function appendSessionTokenToUrl(
-	value: URL | string,
-	token: string,
-	searchParamName = sessionTokenQueryParamName
+export function readSessionExchangeCode(
+	value: URL | Request | string,
+	searchParamName = sessionExchangeCodeQueryParamName
 ) {
-	const url = value instanceof URL ? new URL(value) : new URL(value)
-	url.searchParams.set(searchParamName, token)
-	return url.toString()
+	return resolveUrl(value).searchParams.get(searchParamName)
 }
 
-export function readSessionToken(
+export function removeSessionExchangeCodeFromUrl(
 	value: URL | Request | string,
-	cookies?: ReadableCookieStore,
-	searchParamName = sessionTokenQueryParamName
+	searchParamName = sessionExchangeCodeQueryParamName
 ) {
-	const url = resolveUrl(value)
-	const tokenFromUrl = url.searchParams.get(searchParamName)
-
-	if (tokenFromUrl) {
-		return tokenFromUrl
-	}
-
-	return cookies?.get(sessionCookieName) ?? null
+	const url = new URL(resolveUrl(value))
+	url.searchParams.delete(searchParamName)
+	return url.toString()
 }
 
 export function setSessionCookie(

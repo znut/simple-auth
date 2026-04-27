@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from "vitest"
 
 const {
-	appendSessionTokenToUrl,
+	appendSessionExchangeCodeToUrl,
+	createSessionExchangeCode,
 	getDbOrThrow,
+	removeSessionExchangeCodeFromUrl,
 	resolveAllowReturnUrls,
 	resolvePostAuthRedirect,
 	sql,
 } = vi.hoisted(() => ({
-	appendSessionTokenToUrl: vi.fn(),
+	appendSessionExchangeCodeToUrl: vi.fn(),
+	createSessionExchangeCode: vi.fn(),
 	getDbOrThrow: vi.fn(),
+	removeSessionExchangeCodeFromUrl: vi.fn(),
 	resolveAllowReturnUrls: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
 	sql: vi.fn(() => ({
@@ -33,8 +37,13 @@ vi.mock("$lib/server/helpers", () => ({
 	resolvePostAuthRedirect,
 }))
 
+vi.mock("$lib/server/session-exchange-code", () => ({
+	appendSessionExchangeCodeToUrl,
+	createSessionExchangeCode,
+}))
+
 vi.mock("$lib/server/session", () => ({
-	appendSessionTokenToUrl,
+	removeSessionExchangeCodeFromUrl,
 }))
 
 vi.mock("drizzle-orm", () => ({
@@ -104,15 +113,23 @@ describe("auth landing page load", () => {
 		})
 	})
 
-	it("appends the active session token when redirecting an authenticated user to next", async () => {
+	it("redirects an authenticated user to next without exposing the session token", async () => {
 		resolveAllowReturnUrls.mockReturnValue([
 			"https://dashboard.example.com/auth/callback",
 		])
 		resolvePostAuthRedirect.mockReturnValue(
 			"https://dashboard.example.com/auth/callback?next=%2F"
 		)
-		appendSessionTokenToUrl.mockReturnValue(
-			"https://dashboard.example.com/auth/callback?next=%2F&simple_auth_token=fresh-session-token"
+		removeSessionExchangeCodeFromUrl.mockReturnValue(
+			"https://dashboard.example.com/auth/callback?next=%2F"
+		)
+		createSessionExchangeCode.mockResolvedValue({
+			code: "exchange-code",
+			expiresAt: "2026-04-22T09:28:00.000Z",
+		})
+		getDbOrThrow.mockReturnValue({})
+		appendSessionExchangeCodeToUrl.mockReturnValue(
+			"https://dashboard.example.com/auth/callback?next=%2F&simple_auth_code=exchange-code"
 		)
 
 		await expect(
@@ -142,12 +159,19 @@ describe("auth landing page load", () => {
 		).rejects.toMatchObject({
 			status: 303,
 			location:
-				"https://dashboard.example.com/auth/callback?next=%2F&simple_auth_token=fresh-session-token",
+				"https://dashboard.example.com/auth/callback?next=%2F&simple_auth_code=exchange-code",
 		})
 
-		expect(appendSessionTokenToUrl).toHaveBeenCalledWith(
+		expect(createSessionExchangeCode).toHaveBeenCalledWith(
+			{},
+			{
+				returnUrl: "https://dashboard.example.com/auth/callback?next=%2F",
+				token: "fresh-session-token",
+			}
+		)
+		expect(appendSessionExchangeCodeToUrl).toHaveBeenCalledWith(
 			"https://dashboard.example.com/auth/callback?next=%2F",
-			"fresh-session-token"
+			"exchange-code"
 		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			RETURN_URL_ALLOWLIST: "https://dashboard.example.com/auth/callback",

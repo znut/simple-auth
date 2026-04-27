@@ -1,16 +1,17 @@
 # Simple Auth
 
-Simple Auth is a passkey-based authentication service built with SvelteKit. It also ships `@znut/simple-auth-lib` so downstream apps can verify session tokens returned from the auth service.
+Simple Auth is a passkey-based authentication service built with SvelteKit. It also ships `@znut/simple-auth-lib` so downstream apps can verify session tokens exchanged from the auth service.
 
-## Return-URL token flow
+## Return-URL code flow
 
 After a successful login or registration, Simple Auth now:
 
 1. Signs a session token.
 2. Sets its own `simple_auth_session` cookie for the auth app.
-3. Appends the same token to the `next` URL as `simple_auth_token`.
+3. Stores the session token behind a short-lived, single-use exchange code.
+4. Appends only that exchange code to the `next` URL as `simple_auth_code`.
 
-This avoids relying on a shared parent-domain cookie between the auth app and the consumer app.
+This avoids putting bearer session tokens in browser-visible URLs while still supporting cross-domain handoff.
 
 If `RETURN_URL_ALLOWLIST` is undefined, Simple Auth only allows:
 
@@ -41,12 +42,12 @@ Use a comma-separated list for multiple URLs. Relative URLs on the auth app itse
 Example redirect:
 
 ```text
-https://app.example.com/auth/callback?simple_auth_token=eyJ...
+https://app.example.com/auth/callback?simple_auth_code=9Gm...
 ```
 
 ## App setup
 
-The consumer app must share the same `SESSION_SECRET` as the auth service so it can verify returned tokens.
+The consumer app exchanges the one-time code with the auth service from its server-side callback route. The consumer app must share the same `SESSION_SECRET` as the auth service so it can verify exchanged tokens.
 
 Install the library:
 
@@ -61,7 +62,9 @@ Example SvelteKit route:
 ```ts
 // src/routes/auth/callback/+server.ts
 import {
+	readSessionExchangeCode,
 	readSessionToken,
+	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
 	setSessionCookie,
 	verifySessionToken,
@@ -70,14 +73,36 @@ import { redirect } from "@sveltejs/kit"
 import type { RequestHandler } from "./$types"
 
 const sessionSecret = process.env.SESSION_SECRET!
+const authOrigin = "https://auth.example.com"
 
-export const GET: RequestHandler = async ({ cookies, request, url }) => {
-	const token = readSessionToken(request, cookies)
+export const GET: RequestHandler = async ({ cookies, fetch, request, url }) => {
+	const code = readSessionExchangeCode(request)
 
-	if (!token) {
-		throw redirect(303, "/login?error=missing-token")
+	if (!code) {
+		throw redirect(303, "/login?error=missing-code")
 	}
 
+	const returnUrl = removeSessionExchangeCodeFromUrl(url)
+
+	const exchangeResponse = await fetch(
+		`${authOrigin}/api/auth/session/exchange`,
+		{
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				code,
+				returnUrl,
+			}),
+		}
+	)
+
+	if (!exchangeResponse.ok) {
+		throw redirect(303, "/login?error=invalid-code")
+	}
+
+	const { token } = (await exchangeResponse.json()) as { token: string }
 	const session = await verifySessionToken(token, sessionSecret)
 
 	if (!session) {
@@ -108,7 +133,7 @@ const session = token
 	: null
 ```
 
-`readSessionToken(...)` checks `simple_auth_token` in the URL first, then falls back to the `simple_auth_session` cookie.
+`readSessionToken(...)` reads only the `simple_auth_session` cookie. It does not accept bearer tokens from URLs.
 
 ## Deploy
 
