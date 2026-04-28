@@ -8,12 +8,13 @@
 		"directory": ".svelte-kit/cloudflare",
 		"binding": "ASSETS",
 	},
+	"observability": {
+		"enabled": true,
+	},
+	/* non-inherited */
 	"vars": {
 		"RETURN_URL_ALLOWLIST": "http://dashboard.ex.localhost:4173/auth/callback",
 		"SESSION_COOKIE_DOMAIN": ".ex.localhost",
-	},
-	"observability": {
-		"enabled": true,
 	},
 	"d1_databases": [
 		{

@@ -7,7 +7,7 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
 	use: {
-		baseURL: "http://auth.ex.localhost:5100",
+		baseURL: "http://auth.e2e.localhost:5101",
 		trace: "retain-on-failure",
 	},
 	projects: [
@@ -17,9 +17,12 @@ export default defineConfig({
 		},
 	],
 	webServer: {
-		command: "bun run db:migrate & bun run dev",
-		url: "http://auth.ex.localhost:5100",
-		reuseExistingServer: !process.env.CI,
+		command: "bun run db:migrate:e2e & bun run preview --port 5101",
+		url: "http://auth.e2e.localhost:5101",
+		reuseExistingServer: false,
 		timeout: 120_000,
+		env: {
+			SVELTE_CONFIG: "svelte.config.e2e.js",
+		},
 	},
 })

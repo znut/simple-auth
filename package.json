@@ -10,7 +10,7 @@
 		"build:lib": "bun run --cwd simple-auth-lib build",
 		"key:generate": "bun scripts/key-generate.mjs",
 		"deploy:init": "bun scripts/init.mjs",
-		"preview": "bun run build && wrangler dev --config wrangler.jsonc --ip 0.0.0.0 --port 5100",
+		"preview": "bun run build && wrangler dev",
 		"format": "prettier --write .",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"lint": "prettier --check . && eslint .",
@@ -19,6 +19,7 @@
 		"test": "bun run test:unit && bun run test:e2e",
 		"db:generate": "drizzle-kit generate --config drizzle.config.ts",
 		"db:migrate": "wrangler d1 migrations apply simple-auth-web --local --config wrangler.jsonc",
+		"db:migrate:e2e": "wrangler d1 migrations apply simple-auth-web-e2e --local --config wrangler.e2e.jsonc",
 		"db:migrate:remote": "wrangler d1 migrations apply simple-auth-web --remote --env production --config wrangler.jsonc",
 		"cf-typegen": "wrangler types --config wrangler.jsonc ./src/cf-bindings.d.ts --env-interface CfEnv"
 	},

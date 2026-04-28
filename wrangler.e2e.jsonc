@@ -1,0 +1,24 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "simple-auth-e2e",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-04-21",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"directory": ".svelte-kit/cloudflare",
+		"binding": "ASSETS",
+	},
+	"vars": {
+		"RETURN_URL_ALLOWLIST": "http://dashboard.e2e.localhost:4173/auth/callback",
+		"SESSION_COOKIE_DOMAIN": ".e2e.localhost",
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "simple-auth-web-e2e",
+			"database_id": "00000000-0000-0000-0000-000000000012",
+			"preview_database_id": "00000000-0000-0000-0000-000000000013",
+			"migrations_dir": "db/migrations",
+		},
+	],
+}

@@ -1,8 +1,6 @@
 import adapter from "@sveltejs/adapter-cloudflare"
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte"
 
-const wranglerEnvironment = process.env.CLOUDFLARE_ENV
-
 /** @type {import("@sveltejs/kit").Config} */
 const config = {
 	preprocess: vitePreprocess(),
@@ -12,8 +10,8 @@ const config = {
 		},
 		adapter: adapter({
 			platformProxy: {
-				environment: wranglerEnvironment,
-				persist: true,
+				configPath: "wrangler.e2e.jsonc",
+				persist: false,
 			},
 		}),
 	},

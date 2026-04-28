@@ -23,4 +23,5 @@ This is Simple Authen webapp
 ## Code Style & Conventions
 
 - Run linter and prettier before any check or test
+- Do not leave unused locals, parameters, or variables in the codebase. And DO NOT prefix ignored values with `_`.
 - Use components provided by DaisyUI first before creating custom components. Customize DaisyUI theme as needed so it applied App-wide and not just look and feel in one specific place.
