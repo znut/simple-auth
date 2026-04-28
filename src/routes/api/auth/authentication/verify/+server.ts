@@ -13,7 +13,7 @@ import {
 import {
 	listUserRoles,
 	resolvePrimarySessionRole,
-	resolveSessionSecret,
+	resolveSessionPrivateKey,
 } from "$lib/server/roles"
 import {
 	appendSessionExchangeCodeToUrl,
@@ -23,6 +23,8 @@ import { passkeys, users } from "$lib/server/schema"
 import {
 	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
+	resolveSessionTokenAudience,
+	resolveSessionTokenIssuer,
 	setSessionCookie,
 	shouldUseSecureCookies,
 	signSessionToken,
@@ -40,7 +42,9 @@ export const POST: RequestHandler = async ({
 	platform,
 }) => {
 	const db = getDbOrThrow(locals.db)
-	const sessionSecret = resolveSessionSecret(platform?.env)
+	const sessionPrivateKey = resolveSessionPrivateKey(platform?.env)
+	const sessionIssuer = resolveSessionTokenIssuer(request)
+	const sessionAudience = resolveSessionTokenAudience(request)
 	const sessionCookieOptions = resolveSessionCookieOptions(
 		request,
 		platform?.env.SESSION_COOKIE_DOMAIN
@@ -163,7 +167,11 @@ export const POST: RequestHandler = async ({
 			roleName: primaryRole.name,
 			roles: sessionRoles,
 		},
-		sessionSecret
+		sessionPrivateKey,
+		{
+			audience: sessionAudience,
+			issuer: sessionIssuer,
+		}
 	)
 	setSessionCookie(
 		cookies,
@@ -180,13 +188,30 @@ export const POST: RequestHandler = async ({
 	const returnUrl = redirectTo
 		? removeSessionExchangeCodeFromUrl(redirectTo)
 		: null
+	const exchangeSession = returnUrl
+		? await signSessionToken(
+				{
+					id: passkeyRecord.userId,
+					email: passkeyRecord.userEmail,
+					fullName: passkeyRecord.userFullName,
+					role: primaryRole.key,
+					roleName: primaryRole.name,
+					roles: sessionRoles,
+				},
+				sessionPrivateKey,
+				{
+					audience: new URL(returnUrl).origin,
+					issuer: sessionIssuer,
+				}
+			)
+		: null
 	const redirectWithCode = returnUrl
 		? appendSessionExchangeCodeToUrl(
 				returnUrl,
 				(
 					await createSessionExchangeCode(db, {
 						returnUrl,
-						token: session.token,
+						token: exchangeSession?.token ?? session.token,
 					})
 				).code
 			)

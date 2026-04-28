@@ -9,11 +9,12 @@ export const userRoleKey = "user"
 function getRequiredEnvVar(
 	env:
 		| {
-				SESSION_SECRET?: string
+				SESSION_PRIVATE_KEY_JWK?: string
+				SESSION_PUBLIC_KEY_JWK?: string
 		  }
 		| null
 		| undefined,
-	name: "SESSION_SECRET"
+	name: "SESSION_PRIVATE_KEY_JWK" | "SESSION_PUBLIC_KEY_JWK"
 ) {
 	const value = env?.[name]?.trim()
 
@@ -24,8 +25,16 @@ function getRequiredEnvVar(
 	return value
 }
 
-export function resolveSessionSecret(env?: { SESSION_SECRET?: string }) {
-	return getRequiredEnvVar(env, "SESSION_SECRET")
+export function resolveSessionPrivateKey(env?: {
+	SESSION_PRIVATE_KEY_JWK?: string
+}) {
+	return getRequiredEnvVar(env, "SESSION_PRIVATE_KEY_JWK")
+}
+
+export function resolveSessionPublicKey(env?: {
+	SESSION_PUBLIC_KEY_JWK?: string
+}) {
+	return getRequiredEnvVar(env, "SESSION_PUBLIC_KEY_JWK")
 }
 
 export function roleHasAdminAccess(

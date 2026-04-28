@@ -7,6 +7,8 @@ const {
 	eq,
 	readSessionToken,
 	resolveSessionCookieOptions,
+	resolveSessionTokenAudience,
+	resolveSessionTokenIssuer,
 	setSessionCookie,
 	signSessionToken,
 	sql,
@@ -18,6 +20,8 @@ const {
 	eq: vi.fn(() => Symbol("eq")),
 	readSessionToken: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
+	resolveSessionTokenAudience: vi.fn(),
+	resolveSessionTokenIssuer: vi.fn(),
 	setSessionCookie: vi.fn(),
 	signSessionToken: vi.fn(),
 	sql: {
@@ -30,6 +34,8 @@ vi.mock("$lib/server/session", () => ({
 	clearSessionCookie,
 	readSessionToken,
 	resolveSessionCookieOptions,
+	resolveSessionTokenAudience,
+	resolveSessionTokenIssuer,
 	sessionCookieName: "simple_auth_session",
 	setSessionCookie,
 	signSessionToken,
@@ -75,6 +81,8 @@ describe("auth session hook", () => {
 			domain: "localhost",
 		})
 		readSessionToken.mockReturnValue("legacy-auth-only-session")
+		resolveSessionTokenIssuer.mockReturnValue("http://auth.ex.localhost:5100")
+		resolveSessionTokenAudience.mockReturnValue("http://auth.ex.localhost:5100")
 	})
 
 	it("reissues the session cookie with the shared domain after a valid auth-only session", async () => {
@@ -121,12 +129,16 @@ describe("auth session hook", () => {
 
 		createDb.mockReturnValue(db)
 		verifySessionToken.mockResolvedValue({
+			aud: "http://auth.ex.localhost:5100",
 			id: user.id,
 			email: user.email,
 			fullName: user.fullName,
+			iss: "http://auth.ex.localhost:5100",
+			jti: "session-id",
 			role: "owner",
 			roleName: "Owner",
 			roles: [{ key: "owner", name: "Owner" }],
+			sub: String(user.id),
 			exp: 123_456,
 			iat: 123_000,
 		})
@@ -145,7 +157,8 @@ describe("auth session hook", () => {
 					env: {
 						DB: {} as never,
 						SESSION_COOKIE_DOMAIN: "localhost",
-						SESSION_SECRET: "dev-session-secret",
+						SESSION_PRIVATE_KEY_JWK: "private-session-key",
+						SESSION_PUBLIC_KEY_JWK: "public-session-key",
 					},
 				},
 				url,
@@ -155,6 +168,25 @@ describe("auth session hook", () => {
 
 		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(url, "localhost")
 		expect(readSessionToken).toHaveBeenCalledWith(url, cookies)
+		expect(verifySessionToken).toHaveBeenCalledWith(
+			"legacy-auth-only-session",
+			"public-session-key",
+			{
+				audience: "http://auth.ex.localhost:5100",
+				issuer: "http://auth.ex.localhost:5100",
+			}
+		)
+		expect(signSessionToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 7,
+				email: "lead@example.com",
+			}),
+			"private-session-key",
+			{
+				audience: "http://auth.ex.localhost:5100",
+				issuer: "http://auth.ex.localhost:5100",
+			}
+		)
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
 			"fresh-session-token",

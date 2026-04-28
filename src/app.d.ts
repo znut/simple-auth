@@ -18,7 +18,8 @@ declare global {
 				DB?: D1Database
 				RETURN_URL_ALLOWLIST?: string
 				SESSION_COOKIE_DOMAIN?: string
-				SESSION_SECRET?: string
+				SESSION_PRIVATE_KEY_JWK?: string
+				SESSION_PUBLIC_KEY_JWK?: string
 			}
 		}
 	}

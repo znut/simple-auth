@@ -17,8 +17,21 @@ export interface SessionUser {
 }
 
 export interface VerifiedSessionUser extends SessionUser {
+	aud: string
 	exp: number
 	iat: number
+	iss: string
+	jti: string
+	sub: string
+}
+
+export interface SessionTokenVerificationOptions {
+	audience: string | readonly string[]
+	issuer: string
+}
+
+type SessionJsonWebKey = JsonWebKey & {
+	kid?: string
 }
 
 interface WritableCookieStore {
@@ -75,14 +88,59 @@ function decodeBase64Url(value: string) {
 	return Buffer.from(value, "base64url")
 }
 
-async function importKey(secret: string) {
+function parseJsonWebKey(value: JsonWebKey | string): SessionJsonWebKey {
+	if (typeof value !== "string") {
+		return value
+	}
+
+	const trimmedValue = value.trim()
+	const normalizedValue =
+		trimmedValue.startsWith("{\\") && trimmedValue.endsWith("}")
+			? trimmedValue.replace(/\\"/g, '"')
+			: trimmedValue
+	const parsedValue = JSON.parse(normalizedValue) as string | SessionJsonWebKey
+
+	return typeof parsedValue === "string"
+		? (JSON.parse(parsedValue) as SessionJsonWebKey)
+		: parsedValue
+}
+
+async function importVerificationKey(publicKey: JsonWebKey | string) {
+	const parsedPublicKey = parseJsonWebKey(publicKey)
+
 	return crypto.subtle.importKey(
-		"raw",
-		new TextEncoder().encode(secret),
-		{ name: "HMAC", hash: "SHA-256" },
+		"jwk",
+		parsedPublicKey,
+		{ name: "ECDSA", namedCurve: "P-256" },
 		false,
 		["verify"]
 	)
+}
+
+function timingSafeEqual(value: string, expected: string) {
+	const valueBytes = new TextEncoder().encode(value)
+	const expectedBytes = new TextEncoder().encode(expected)
+
+	if (valueBytes.length !== expectedBytes.length) {
+		return false
+	}
+
+	let difference = 0
+
+	for (let index = 0; index < valueBytes.length; index += 1) {
+		difference |= valueBytes[index] ^ expectedBytes[index]
+	}
+
+	return difference === 0
+}
+
+function isAllowedAudience(
+	value: string,
+	expected: string | readonly string[]
+) {
+	return typeof expected === "string"
+		? timingSafeEqual(value, expected)
+		: expected.some(audience => timingSafeEqual(value, audience))
 }
 
 export function shouldUseSecureCookies(value: URL | Request | string) {
@@ -153,30 +211,78 @@ export function resolveSessionCookieOptions(
 	return { secure }
 }
 
-export async function verifySessionToken(token: string, secret: string) {
-	const [payloadSegment, signatureSegment] = token.split(".")
-
-	if (!payloadSegment || !signatureSegment) {
+export async function verifySessionToken(
+	token: string,
+	publicKey: JsonWebKey | string,
+	options?: SessionTokenVerificationOptions
+) {
+	if (!options) {
 		return null
 	}
 
-	const key = await importKey(secret)
+	const tokenSegments = token.split(".")
+	const [headerSegment, payloadSegment, signatureSegment] = tokenSegments
+
+	if (
+		tokenSegments.length !== 3 ||
+		!headerSegment ||
+		!payloadSegment ||
+		!signatureSegment
+	) {
+		return null
+	}
+
+	let header: { alg?: string; kid?: string; typ?: string }
+	let payload: VerifiedSessionUser
+	let parsedPublicKey: SessionJsonWebKey
+
+	try {
+		header = JSON.parse(decodeBase64Url(headerSegment).toString()) as {
+			alg?: string
+			kid?: string
+			typ?: string
+		}
+		payload = JSON.parse(
+			decodeBase64Url(payloadSegment).toString()
+		) as VerifiedSessionUser
+		parsedPublicKey = parseJsonWebKey(publicKey)
+	} catch {
+		return null
+	}
+
+	if (header.alg !== "ES256" || header.typ !== "JWT") {
+		return null
+	}
+
+	if (
+		parsedPublicKey.kid &&
+		header.kid &&
+		!timingSafeEqual(header.kid, parsedPublicKey.kid)
+	) {
+		return null
+	}
+
+	const key = await importVerificationKey(parsedPublicKey)
 	const verified = await crypto.subtle.verify(
-		"HMAC",
+		{ name: "ECDSA", hash: "SHA-256" },
 		key,
 		decodeBase64Url(signatureSegment),
-		new TextEncoder().encode(payloadSegment)
+		new TextEncoder().encode(`${headerSegment}.${payloadSegment}`)
 	)
 
 	if (!verified) {
 		return null
 	}
 
-	const payload = JSON.parse(
-		decodeBase64Url(payloadSegment).toString()
-	) as VerifiedSessionUser
-
 	if (payload.exp <= Date.now()) {
+		return null
+	}
+
+	if (!timingSafeEqual(payload.iss, options.issuer)) {
+		return null
+	}
+
+	if (!isAllowedAudience(payload.aud, options.audience)) {
 		return null
 	}
 

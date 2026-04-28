@@ -13,7 +13,10 @@ const {
 	resolveAllowReturnUrls,
 	resolvePostAuthRedirect,
 	resolveRegistrationInvite,
+	resolveSessionPrivateKey,
 	resolveSessionCookieOptions,
+	resolveSessionTokenAudience,
+	resolveSessionTokenIssuer,
 	setSessionCookie,
 	signSessionToken,
 	verifyRegistrationResponse,
@@ -30,7 +33,10 @@ const {
 	resolveAllowReturnUrls: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
 	resolveRegistrationInvite: vi.fn(),
+	resolveSessionPrivateKey: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
+	resolveSessionTokenAudience: vi.fn(),
+	resolveSessionTokenIssuer: vi.fn(),
 	setSessionCookie: vi.fn(),
 	signSessionToken: vi.fn(),
 	verifyRegistrationResponse: vi.fn(),
@@ -62,9 +68,20 @@ vi.mock("@simplewebauthn/server", () => ({
 vi.mock("$lib/server/session", () => ({
 	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
+	resolveSessionTokenAudience,
+	resolveSessionTokenIssuer,
 	setSessionCookie,
 	signSessionToken,
 }))
+
+vi.mock("$lib/server/roles", async importOriginal => {
+	const actual = await importOriginal<typeof import("$lib/server/roles")>()
+
+	return {
+		...actual,
+		resolveSessionPrivateKey,
+	}
+})
 
 vi.mock("$lib/server/session-exchange-code", () => ({
 	appendSessionExchangeCodeToUrl,
@@ -121,6 +138,9 @@ describe("POST /api/auth/registration/verify", () => {
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
+		resolveSessionPrivateKey.mockReturnValue("private-session-key")
+		resolveSessionTokenIssuer.mockReturnValue("http://auth.ex.localhost:5100")
+		resolveSessionTokenAudience.mockReturnValue("http://auth.ex.localhost:5100")
 		removeSessionExchangeCodeFromUrl.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
@@ -140,10 +160,15 @@ describe("POST /api/auth/registration/verify", () => {
 			secure: false,
 			domain: "localhost",
 		})
-		signSessionToken.mockResolvedValue({
-			token: "signed-session-token",
-			expiresAt: 123_456,
-		})
+		signSessionToken
+			.mockResolvedValueOnce({
+				token: "auth-session-token",
+				expiresAt: 123_456,
+			})
+			.mockResolvedValueOnce({
+				token: "consumer-session-token",
+				expiresAt: 123_456,
+			})
 		createSessionExchangeCode.mockResolvedValue({
 			code: "exchange-code",
 			expiresAt: "2026-04-22T09:28:00.000Z",
@@ -229,14 +254,14 @@ describe("POST /api/auth/registration/verify", () => {
 					RETURN_URL_ALLOWLIST:
 						"http://dashboard.ex.localhost:4173/auth/callback",
 					SESSION_COOKIE_DOMAIN: "localhost",
-					SESSION_SECRET: "dev-session-secret",
+					SESSION_PRIVATE_KEY_JWK: "private-session-key",
 				},
 			},
 		} as never)
 
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
-			"signed-session-token",
+			"auth-session-token",
 			123_456,
 			{
 				secure: false,
@@ -247,11 +272,35 @@ describe("POST /api/auth/registration/verify", () => {
 			ADMIN_ROLE_KEY: "owner",
 			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
 			SESSION_COOKIE_DOMAIN: "localhost",
-			SESSION_SECRET: "dev-session-secret",
+			SESSION_PRIVATE_KEY_JWK: "private-session-key",
 		})
+		expect(signSessionToken).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				id: 7,
+				email: "lead@example.com",
+			}),
+			"private-session-key",
+			{
+				audience: "http://auth.ex.localhost:5100",
+				issuer: "http://auth.ex.localhost:5100",
+			}
+		)
+		expect(signSessionToken).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				id: 7,
+				email: "lead@example.com",
+			}),
+			"private-session-key",
+			{
+				audience: "http://dashboard.ex.localhost:4173",
+				issuer: "http://auth.ex.localhost:5100",
+			}
+		)
 		expect(createSessionExchangeCode).toHaveBeenCalledWith(db, {
 			returnUrl: "http://dashboard.ex.localhost:4173/",
-			token: "signed-session-token",
+			token: "consumer-session-token",
 		})
 		expect(appendSessionExchangeCodeToUrl).toHaveBeenCalledWith(
 			"http://dashboard.ex.localhost:4173/",

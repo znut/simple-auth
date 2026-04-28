@@ -7,6 +7,9 @@ const {
 	removeSessionExchangeCodeFromUrl,
 	resolveAllowReturnUrls,
 	resolvePostAuthRedirect,
+	resolveSessionPrivateKey,
+	resolveSessionTokenIssuer,
+	signSessionToken,
 	sql,
 } = vi.hoisted(() => ({
 	appendSessionExchangeCodeToUrl: vi.fn(),
@@ -15,6 +18,9 @@ const {
 	removeSessionExchangeCodeFromUrl: vi.fn(),
 	resolveAllowReturnUrls: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
+	resolveSessionPrivateKey: vi.fn(),
+	resolveSessionTokenIssuer: vi.fn(),
+	signSessionToken: vi.fn(),
 	sql: vi.fn(() => ({
 		mapWith: vi.fn(() => "count-expression"),
 	})),
@@ -37,6 +43,10 @@ vi.mock("$lib/server/helpers", () => ({
 	resolvePostAuthRedirect,
 }))
 
+vi.mock("$lib/server/roles", () => ({
+	resolveSessionPrivateKey,
+}))
+
 vi.mock("$lib/server/session-exchange-code", () => ({
 	appendSessionExchangeCodeToUrl,
 	createSessionExchangeCode,
@@ -44,6 +54,8 @@ vi.mock("$lib/server/session-exchange-code", () => ({
 
 vi.mock("$lib/server/session", () => ({
 	removeSessionExchangeCodeFromUrl,
+	resolveSessionTokenIssuer,
+	signSessionToken,
 }))
 
 vi.mock("drizzle-orm", () => ({
@@ -123,6 +135,12 @@ describe("auth landing page load", () => {
 		removeSessionExchangeCodeFromUrl.mockReturnValue(
 			"https://dashboard.example.com/auth/callback?next=%2F"
 		)
+		resolveSessionPrivateKey.mockReturnValue("private-session-key")
+		resolveSessionTokenIssuer.mockReturnValue("https://auth.example.com")
+		signSessionToken.mockResolvedValue({
+			token: "consumer-session-token",
+			expiresAt: 123_456,
+		})
 		createSessionExchangeCode.mockResolvedValue({
 			code: "exchange-code",
 			expiresAt: "2026-04-22T09:28:00.000Z",
@@ -150,6 +168,7 @@ describe("auth landing page load", () => {
 				platform: {
 					env: {
 						RETURN_URL_ALLOWLIST: "https://dashboard.example.com/auth/callback",
+						SESSION_PRIVATE_KEY_JWK: "private-session-key",
 					},
 				},
 				url: new URL(
@@ -166,7 +185,18 @@ describe("auth landing page load", () => {
 			{},
 			{
 				returnUrl: "https://dashboard.example.com/auth/callback?next=%2F",
-				token: "fresh-session-token",
+				token: "consumer-session-token",
+			}
+		)
+		expect(signSessionToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 7,
+				email: "lead@example.com",
+			}),
+			"private-session-key",
+			{
+				audience: "https://dashboard.example.com",
+				issuer: "https://auth.example.com",
 			}
 		)
 		expect(appendSessionExchangeCodeToUrl).toHaveBeenCalledWith(
@@ -175,6 +205,7 @@ describe("auth landing page load", () => {
 		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			RETURN_URL_ALLOWLIST: "https://dashboard.example.com/auth/callback",
+			SESSION_PRIVATE_KEY_JWK: "private-session-key",
 		})
 	})
 })

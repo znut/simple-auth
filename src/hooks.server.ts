@@ -2,12 +2,15 @@ import { createDb } from "$lib/server/db"
 import {
 	listUserRoles,
 	resolvePrimarySessionRole,
-	resolveSessionSecret,
+	resolveSessionPrivateKey,
+	resolveSessionPublicKey,
 } from "$lib/server/roles"
 import {
 	clearSessionCookie,
 	readSessionToken,
 	resolveSessionCookieOptions,
+	resolveSessionTokenAudience,
+	resolveSessionTokenIssuer,
 	setSessionCookie,
 	signSessionToken,
 	verifySessionToken,
@@ -27,11 +30,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (event.platform?.env?.DB) {
 		event.locals.db = createDb(event.platform.env.DB)
 	}
-	const sessionSecret = resolveSessionSecret(event.platform?.env)
+	const sessionPrivateKey = resolveSessionPrivateKey(event.platform?.env)
+	const sessionPublicKey = resolveSessionPublicKey(event.platform?.env)
+	const sessionIssuer = resolveSessionTokenIssuer(event.url)
+	const sessionAudience = resolveSessionTokenAudience(event.url)
 
 	const sessionToken = readSessionToken(event.url, event.cookies)
 	if (sessionToken && event.locals.db) {
-		const payload = await verifySessionToken(sessionToken, sessionSecret)
+		const payload = await verifySessionToken(sessionToken, sessionPublicKey, {
+			audience: sessionAudience,
+			issuer: sessionIssuer,
+		})
 
 		if (payload) {
 			const user = await event.locals.db
@@ -76,7 +85,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 						roleName: primaryRole.name,
 						roles: sessionRoles,
 					},
-					sessionSecret
+					sessionPrivateKey,
+					{
+						audience: sessionAudience,
+						issuer: sessionIssuer,
+					}
 				)
 				setSessionCookie(
 					event.cookies,
