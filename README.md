@@ -16,9 +16,10 @@ This avoids putting bearer session tokens in browser-visible URLs while still su
 If `RETURN_URL_ALLOWLIST` is undefined, Simple Auth only allows:
 
 1. Relative URLs on the auth app itself.
-2. Absolute URLs on the same top-domain family, such as `auth.example.com` to `app.example.com`.
+2. Absolute URLs on the same origin as the auth app.
+3. Local development redirects where both hostnames are exactly `localhost` or end with `.localhost`, and the protocol matches.
 
-If you need to allow returns outside that default boundary, set `RETURN_URL_ALLOWLIST`.
+If you need to allow production cross-origin returns, set `RETURN_URL_ALLOWLIST`.
 
 Example `wrangler.jsonc` config:
 
@@ -37,7 +38,7 @@ Example `wrangler.jsonc` config:
 }
 ```
 
-Use a comma-separated list for multiple URLs. Relative URLs on the auth app itself are still allowed automatically. Any cross-origin `next` URL that is not on the effective allowlist is ignored.
+Use a comma-separated list for multiple URLs. Each allowlist entry must use `http` or `https`; matching uses the exact origin and exact path only, and entries must not include a query string or hash. Relative URLs on the auth app itself are still allowed automatically. Any cross-origin `next` URL that is not on the effective allowlist is ignored.
 
 Example redirect:
 

@@ -21,13 +21,22 @@ describe("auth helpers", () => {
 		expect(expectedRpId(request)).toBe("auth.example.com")
 	})
 
-	it("only resolves safe post-auth redirects", () => {
+	it("allows same-origin post-auth redirects", () => {
 		expect(
 			resolvePostAuthRedirect(
 				"/dashboard?month=2026-04",
 				"https://auth.example.com"
 			)
 		).toBe("https://auth.example.com/dashboard?month=2026-04")
+		expect(
+			resolvePostAuthRedirect(
+				"https://auth.example.com/settings",
+				"https://auth.example.com"
+			)
+		).toBe("https://auth.example.com/settings")
+	})
+
+	it("allows exact allowlisted cross-origin redirects", () => {
 		expect(
 			resolvePostAuthRedirect(
 				"https://office.example.com/dashboard",
@@ -37,11 +46,21 @@ describe("auth helpers", () => {
 		).toBe("https://office.example.com/dashboard")
 		expect(
 			resolvePostAuthRedirect(
+				"https://office.example.com/dashboard?next=%2F",
+				"https://auth.example.com",
+				["https://office.example.com/dashboard"]
+			)
+		).toBe("https://office.example.com/dashboard?next=%2F")
+	})
+
+	it("rejects non-exact allowlisted cross-origin redirect paths", () => {
+		expect(
+			resolvePostAuthRedirect(
 				"https://office.example.com/dashboard/callback?next=%2F",
 				"https://auth.example.com",
 				["https://office.example.com/dashboard"]
 			)
-		).toBe("https://office.example.com/dashboard/callback?next=%2F")
+		).toBeNull()
 		expect(
 			resolvePostAuthRedirect(
 				"https://office.example.com/admin",
@@ -49,6 +68,9 @@ describe("auth helpers", () => {
 				["https://office.example.com/dashboard"]
 			)
 		).toBeNull()
+	})
+
+	it("rejects unsupported post-auth redirect schemes", () => {
 		expect(
 			resolvePostAuthRedirect(
 				"javascript:alert('nope')",
@@ -57,13 +79,13 @@ describe("auth helpers", () => {
 		).toBeNull()
 	})
 
-	it("allows same top-domain cross-origin redirects when no allowlist is set", () => {
+	it("allows localhost development cross-origin redirects when no allowlist is set", () => {
 		expect(
 			resolvePostAuthRedirect(
-				"https://dashboard.example.com/auth/callback",
-				"https://auth.example.com"
+				"http://localhost:4173/auth/callback",
+				"http://localhost:5100"
 			)
-		).toBe("https://dashboard.example.com/auth/callback")
+		).toBe("http://localhost:4173/auth/callback")
 		expect(
 			resolvePostAuthRedirect(
 				"http://dashboard.ex.localhost:4173/auth/callback",
@@ -72,10 +94,10 @@ describe("auth helpers", () => {
 		).toBe("http://dashboard.ex.localhost:4173/auth/callback")
 	})
 
-	it("rejects other top-domain redirects when no allowlist is set", () => {
+	it("rejects non-localhost cross-origin redirects when no allowlist is set", () => {
 		expect(
 			resolvePostAuthRedirect(
-				"https://dashboard.other-example.com/auth/callback",
+				"https://dashboard.example.com/auth/callback",
 				"https://auth.example.com"
 			)
 		).toBeNull()
@@ -83,6 +105,18 @@ describe("auth helpers", () => {
 			resolvePostAuthRedirect(
 				"http://dashboard.example.com/auth/callback",
 				"https://auth.example.com"
+			)
+		).toBeNull()
+		expect(
+			resolvePostAuthRedirect(
+				"http://dashboard.localhost.cc/auth/callback",
+				"http://auth.localhost.cc"
+			)
+		).toBeNull()
+		expect(
+			resolvePostAuthRedirect(
+				"https://dashboard.ex.localhost/auth/callback",
+				"http://auth.ex.localhost"
 			)
 		).toBeNull()
 	})
@@ -97,6 +131,29 @@ describe("auth helpers", () => {
 			"https://app.example.com/auth/callback",
 			"https://admin.example.com/auth/callback",
 		])
+	})
+
+	it("rejects invalid env-based return-url allowlist entries", () => {
+		expect(() =>
+			resolveAllowReturnUrls({
+				RETURN_URL_ALLOWLIST: "not a url",
+			})
+		).toThrow("Invalid RETURN_URL_ALLOWLIST entry")
+		expect(() =>
+			resolveAllowReturnUrls({
+				RETURN_URL_ALLOWLIST: "ftp://app.example.com/auth/callback",
+			})
+		).toThrow("must use http or https")
+		expect(() =>
+			resolveAllowReturnUrls({
+				RETURN_URL_ALLOWLIST: "https://app.example.com/auth/callback?next=/",
+			})
+		).toThrow("must not include query strings or hashes")
+		expect(() =>
+			resolveAllowReturnUrls({
+				RETURN_URL_ALLOWLIST: "https://app.example.com/auth/callback#code",
+			})
+		).toThrow("must not include query strings or hashes")
 	})
 
 	it("returns undefined when the env allowlist is missing", () => {
