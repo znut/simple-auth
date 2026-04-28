@@ -289,10 +289,7 @@ export async function verifySessionToken(
 	return payload
 }
 
-export function readSessionToken(
-	_value: URL | Request | string,
-	cookies?: ReadableCookieStore
-) {
+export function readSessionToken(cookies?: ReadableCookieStore) {
 	return cookies?.get(sessionCookieName) ?? null
 }
 

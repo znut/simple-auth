@@ -260,12 +260,7 @@ describe("session helpers", () => {
 			get: vi.fn(() => "cookie-token"),
 		}
 
-		expect(
-			readSessionToken(
-				"https://dashboard.example.com/auth/callback?simple_auth_token=url-token",
-				cookies
-			)
-		).toBe("cookie-token")
+		expect(readSessionToken(cookies)).toBe("cookie-token")
 		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
 	})
 
@@ -274,9 +269,7 @@ describe("session helpers", () => {
 			get: vi.fn(() => "cookie-token"),
 		}
 
-		expect(readSessionToken("https://dashboard.example.com/", cookies)).toBe(
-			"cookie-token"
-		)
+		expect(readSessionToken(cookies)).toBe("cookie-token")
 		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
 	})
 

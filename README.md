@@ -123,7 +123,7 @@ export const GET: RequestHandler = async ({ cookies, fetch, request, url }) => {
 ```ts
 import { readSessionToken, verifySessionToken } from "@znut/simple-auth-lib"
 
-const token = readSessionToken(event.request, event.cookies)
+const token = readSessionToken(event.cookies)
 const session = token
 	? await verifySessionToken(token, process.env.SESSION_PUBLIC_KEY_JWK!, {
 			audience: event.url.origin,

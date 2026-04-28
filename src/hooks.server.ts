@@ -35,7 +35,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const sessionIssuer = resolveSessionTokenIssuer(event.url)
 	const sessionAudience = resolveSessionTokenAudience(event.url)
 
-	const sessionToken = readSessionToken(event.url, event.cookies)
+	const sessionToken = readSessionToken(event.cookies)
 	if (sessionToken && event.locals.db) {
 		const payload = await verifySessionToken(sessionToken, sessionPublicKey, {
 			audience: sessionAudience,

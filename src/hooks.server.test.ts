@@ -167,7 +167,7 @@ describe("auth session hook", () => {
 		} as never)
 
 		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(url, "localhost")
-		expect(readSessionToken).toHaveBeenCalledWith(url, cookies)
+		expect(readSessionToken).toHaveBeenCalledWith(cookies)
 		expect(verifySessionToken).toHaveBeenCalledWith(
 			"legacy-auth-only-session",
 			"public-session-key",
