@@ -22,10 +22,7 @@ import { and, eq } from "drizzle-orm"
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null
 	event.locals.sessionToken = null
-	const sessionCookieOptions = resolveSessionCookieOptions(
-		event.url,
-		event.platform?.env.SESSION_COOKIE_DOMAIN
-	)
+	const sessionCookieOptions = resolveSessionCookieOptions(event.url)
 
 	if (event.platform?.env?.DB) {
 		event.locals.db = createDb(event.platform.env.DB)

@@ -159,8 +159,7 @@ describe("POST /api/auth/authentication/verify", () => {
 			},
 		})
 		resolveSessionCookieOptions.mockReturnValue({
-			secure: false,
-			domain: "localhost",
+			secure: true,
 		})
 		shouldUseSecureCookies.mockReturnValue(false)
 		signSessionToken
@@ -181,7 +180,7 @@ describe("POST /api/auth/authentication/verify", () => {
 		)
 	})
 
-	it("writes the session cookie with shared cookie options", async () => {
+	it("writes the session cookie with resolved cookie options", async () => {
 		const passkeyRecord = {
 			passkeyId: "passkey-1",
 			publicKey: new Uint8Array([1, 2, 3]),
@@ -254,29 +253,23 @@ describe("POST /api/auth/authentication/verify", () => {
 					ADMIN_ROLE_KEY: "owner",
 					RETURN_URL_ALLOWLIST:
 						"http://dashboard.ex.localhost:4173/auth/callback",
-					SESSION_COOKIE_DOMAIN: "localhost",
 					SESSION_PRIVATE_KEY_JWK: "private-session-key",
 				},
 			},
 		} as never)
 
-		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(
-			request,
-			"localhost"
-		)
+		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(request)
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
 			"auth-session-token",
 			123_456,
 			{
-				secure: false,
-				domain: "localhost",
+				secure: true,
 			}
 		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			ADMIN_ROLE_KEY: "owner",
 			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
-			SESSION_COOKIE_DOMAIN: "localhost",
 			SESSION_PRIVATE_KEY_JWK: "private-session-key",
 		})
 		expect(signSessionToken).toHaveBeenNthCalledWith(

@@ -41,10 +41,7 @@ export const POST: RequestHandler = async ({
 	const sessionPrivateKey = resolveSessionPrivateKey(platform?.env)
 	const sessionIssuer = resolveSessionTokenIssuer(request)
 	const sessionAudience = resolveSessionTokenAudience(request)
-	const sessionCookieOptions = resolveSessionCookieOptions(
-		request,
-		platform?.env.SESSION_COOKIE_DOMAIN
-	)
+	const sessionCookieOptions = resolveSessionCookieOptions(request)
 	const { email, inviteNonce, credential, next } = (await request.json()) as {
 		email?: string
 		inviteNonce?: string

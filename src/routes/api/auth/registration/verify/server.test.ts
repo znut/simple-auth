@@ -157,8 +157,7 @@ describe("POST /api/auth/registration/verify", () => {
 			},
 		})
 		resolveSessionCookieOptions.mockReturnValue({
-			secure: false,
-			domain: "localhost",
+			secure: true,
 		})
 		signSessionToken
 			.mockResolvedValueOnce({
@@ -253,7 +252,6 @@ describe("POST /api/auth/registration/verify", () => {
 					ADMIN_ROLE_KEY: "owner",
 					RETURN_URL_ALLOWLIST:
 						"http://dashboard.ex.localhost:4173/auth/callback",
-					SESSION_COOKIE_DOMAIN: "localhost",
 					SESSION_PRIVATE_KEY_JWK: "private-session-key",
 				},
 			},
@@ -264,14 +262,12 @@ describe("POST /api/auth/registration/verify", () => {
 			"auth-session-token",
 			123_456,
 			{
-				secure: false,
-				domain: "localhost",
+				secure: true,
 			}
 		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			ADMIN_ROLE_KEY: "owner",
 			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
-			SESSION_COOKIE_DOMAIN: "localhost",
 			SESSION_PRIVATE_KEY_JWK: "private-session-key",
 		})
 		expect(signSessionToken).toHaveBeenNthCalledWith(

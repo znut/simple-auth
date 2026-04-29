@@ -1,4 +1,4 @@
-export const sessionCookieName = "simple_auth_session"
+export const sessionCookieName = "__Host-simple_auth_session"
 export const sessionExchangeCodeQueryParamName = "simple_auth_code"
 export const sessionDurationMs = 1000 * 60 * 60 * 12
 
@@ -64,7 +64,6 @@ interface ReadableCookieStore {
 }
 
 export interface SessionCookieOptions {
-	domain?: string
 	secure: boolean
 }
 
@@ -75,13 +74,6 @@ function getBaseCookieOptions(options: SessionCookieOptions) {
 		sameSite: "lax" as const,
 		secure: options.secure,
 	}
-}
-
-function clearHostOnlySessionCookie(
-	cookies: WritableCookieStore,
-	options: SessionCookieOptions
-) {
-	cookies.delete(sessionCookieName, getBaseCookieOptions(options))
 }
 
 function decodeBase64Url(value: string) {
@@ -154,61 +146,11 @@ export function shouldUseSecureCookies(value: URL | Request | string) {
 	return url.protocol === "https:"
 }
 
-function normalizeCookieDomain(domain?: string | null) {
-	const trimmedDomain = domain?.trim().replace(/^\.+/, "")
-
-	return trimmedDomain ? trimmedDomain : undefined
-}
-
-function shouldShareLocalhostCookie(hostname: string) {
-	return hostname === "localhost" || hostname.endsWith(".localhost")
-}
-
-function isIpAddress(hostname: string) {
-	return /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(":")
-}
-
 export function resolveSessionCookieOptions(
-	value: URL | Request | string,
-	overrideDomain?: string | null
+	value: URL | Request | string
 ): SessionCookieOptions {
-	const url =
-		value instanceof URL
-			? value
-			: value instanceof Request
-				? new URL(value.url)
-				: new URL(value)
-	const secure = shouldUseSecureCookies(url)
-	const normalizedOverride = normalizeCookieDomain(overrideDomain)
-
-	if (normalizedOverride) {
-		return {
-			secure,
-			domain: normalizedOverride,
-		}
-	}
-
-	if (shouldShareLocalhostCookie(url.hostname)) {
-		return {
-			secure,
-			domain: "localhost",
-		}
-	}
-
-	if (isIpAddress(url.hostname)) {
-		return { secure }
-	}
-
-	const labels = url.hostname.split(".").filter(Boolean)
-
-	if (labels.length >= 3) {
-		return {
-			secure,
-			domain: labels.slice(-2).join("."),
-		}
-	}
-
-	return { secure }
+	shouldUseSecureCookies(value)
+	return { secure: true }
 }
 
 export async function verifySessionToken(
@@ -323,13 +265,8 @@ export function setSessionCookie(
 	expiresAt: number,
 	options: SessionCookieOptions
 ) {
-	if (options.domain) {
-		clearHostOnlySessionCookie(cookies, options)
-	}
-
 	cookies.set(sessionCookieName, token, {
 		...getBaseCookieOptions(options),
-		domain: options.domain,
 		expires: new Date(expiresAt),
 	})
 }
@@ -338,12 +275,5 @@ export function clearSessionCookie(
 	cookies: WritableCookieStore,
 	options: SessionCookieOptions
 ) {
-	if (options.domain) {
-		clearHostOnlySessionCookie(cookies, options)
-	}
-
-	cookies.delete(sessionCookieName, {
-		...getBaseCookieOptions(options),
-		domain: options.domain,
-	})
+	cookies.delete(sessionCookieName, getBaseCookieOptions(options))
 }

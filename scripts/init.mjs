@@ -26,8 +26,6 @@ const readCurrentValues = async () => {
 		databaseId: wrangler.env?.production?.d1_databases?.[0]?.database_id ?? "",
 		databaseName:
 			wrangler.env?.production?.d1_databases?.[0]?.database_name ?? "",
-		sessionCookieDomain:
-			wrangler.env?.production?.vars?.SESSION_COOKIE_DOMAIN ?? "",
 		workerName: wrangler.env?.production?.name ?? "",
 	}
 }
@@ -67,10 +65,6 @@ const updateFiles = async values => {
 	}
 
 	wrangler.env.production.name = values.workerName
-	wrangler.env.production.vars = {
-		...(wrangler.env.production.vars ?? {}),
-		SESSION_COOKIE_DOMAIN: values.sessionCookieDomain,
-	}
 	wrangler.env.production.d1_databases[0] = {
 		...wrangler.env.production.d1_databases[0],
 		database_name: values.databaseName,
@@ -136,11 +130,6 @@ try {
 			"D1 database id",
 			currentValues.databaseId
 		),
-		sessionCookieDomain: await promptWithDefault(
-			rl,
-			"Session cookie domain",
-			currentValues.sessionCookieDomain
-		),
 		appName: await promptWithDefault(
 			rl,
 			"App name shown in website",
@@ -154,7 +143,6 @@ try {
 	console.log(`  Worker app name: ${values.workerName}`)
 	console.log(`  D1 database name: ${values.databaseName}`)
 	console.log(`  D1 database id: ${values.databaseId}`)
-	console.log(`  Session cookie domain: ${values.sessionCookieDomain}`)
 	console.log(`  Website app name: ${values.appName}`)
 } finally {
 	rl.close()

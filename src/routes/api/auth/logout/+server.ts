@@ -8,10 +8,7 @@ import { redirect } from "@sveltejs/kit"
 import type { RequestHandler } from "./$types"
 
 export const GET: RequestHandler = async ({ cookies, platform, url }) => {
-	clearSessionCookie(
-		cookies,
-		resolveSessionCookieOptions(url, platform?.env.SESSION_COOKIE_DOMAIN)
-	)
+	clearSessionCookie(cookies, resolveSessionCookieOptions(url))
 	throw redirect(
 		303,
 		resolvePostAuthRedirect(

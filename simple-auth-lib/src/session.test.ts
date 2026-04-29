@@ -5,7 +5,6 @@ import {
 	readSessionToken,
 	removeSessionExchangeCodeFromUrl,
 	resolveSessionCookieOptions,
-	sessionCookieName,
 	setSessionCookie,
 	shouldUseSecureCookies,
 	verifySessionToken,
@@ -170,50 +169,22 @@ describe("session helpers", () => {
 		expect(shouldUseSecureCookies("https://dashboard.example.com")).toBe(true)
 	})
 
-	it("resolves a shared localhost cookie domain for local app hosts", () => {
+	it("resolves secure host-only session cookie options", () => {
 		expect(
 			resolveSessionCookieOptions("http://auth.ex.localhost:5100")
 		).toEqual({
-			secure: false,
-			domain: "localhost",
+			secure: true,
 		})
-	})
-
-	it("resolves a parent domain for sibling production hosts", () => {
 		expect(resolveSessionCookieOptions("https://auth.example.com")).toEqual({
 			secure: true,
-			domain: "example.com",
 		})
 	})
 
-	it("falls back to a host-only cookie for non-shareable hosts", () => {
-		expect(resolveSessionCookieOptions("https://localhost")).toEqual({
-			secure: true,
-			domain: "localhost",
-		})
-		expect(resolveSessionCookieOptions("https://example.com")).toEqual({
-			secure: true,
-		})
-		expect(resolveSessionCookieOptions("http://127.0.0.1:5100")).toEqual({
-			secure: false,
-		})
-	})
-
-	it("prefers an explicit cookie-domain override", () => {
-		expect(
-			resolveSessionCookieOptions("https://auth.example.com", ".custom.example")
-		).toEqual({
-			secure: true,
-			domain: "custom.example",
-		})
-	})
-
-	it("writes and clears both shared and host-only session cookies when a domain is set", () => {
+	it("writes and clears __Host-prefixed session cookies", () => {
 		const set = vi.fn()
 		const remove = vi.fn()
 		const options = {
-			secure: false,
-			domain: "localhost",
+			secure: true,
 		}
 
 		setSessionCookie(
@@ -234,34 +205,15 @@ describe("session helpers", () => {
 		)
 
 		expect(set).toHaveBeenCalledWith(
-			sessionCookieName,
+			"__Host-simple_auth_session",
 			"token-value",
 			expect.objectContaining(options)
 		)
-		expect(remove).toHaveBeenNthCalledWith(
-			1,
-			sessionCookieName,
-			expect.not.objectContaining({ domain: expect.anything() })
-		)
-		expect(remove).toHaveBeenNthCalledWith(
-			2,
-			sessionCookieName,
-			expect.not.objectContaining({ domain: expect.anything() })
-		)
-		expect(remove).toHaveBeenNthCalledWith(
-			3,
-			sessionCookieName,
+		expect(remove).toHaveBeenCalledWith(
+			"__Host-simple_auth_session",
 			expect.objectContaining(options)
 		)
-	})
-
-	it("ignores session tokens in return urls", () => {
-		const cookies = {
-			get: vi.fn(() => "cookie-token"),
-		}
-
-		expect(readSessionToken(cookies)).toBe("cookie-token")
-		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
+		expect(remove).toHaveBeenCalledTimes(1)
 	})
 
 	it("reads the session token from the cookie", () => {
@@ -270,7 +222,7 @@ describe("session helpers", () => {
 		}
 
 		expect(readSessionToken(cookies)).toBe("cookie-token")
-		expect(cookies.get).toHaveBeenCalledWith(sessionCookieName)
+		expect(cookies.get).toHaveBeenCalledWith("__Host-simple_auth_session")
 	})
 
 	it("reads one-time session exchange codes from return urls", () => {

@@ -36,7 +36,6 @@ vi.mock("$lib/server/session", () => ({
 	resolveSessionCookieOptions,
 	resolveSessionTokenAudience,
 	resolveSessionTokenIssuer,
-	sessionCookieName: "simple_auth_session",
 	setSessionCookie,
 	signSessionToken,
 	verifySessionToken,
@@ -77,15 +76,14 @@ describe("auth session hook", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		resolveSessionCookieOptions.mockReturnValue({
-			secure: false,
-			domain: "localhost",
+			secure: true,
 		})
 		readSessionToken.mockReturnValue("legacy-auth-only-session")
 		resolveSessionTokenIssuer.mockReturnValue("http://auth.ex.localhost:5100")
 		resolveSessionTokenAudience.mockReturnValue("http://auth.ex.localhost:5100")
 	})
 
-	it("reissues the session cookie with the shared domain after a valid auth-only session", async () => {
+	it("reissues the session cookie after a valid auth-only session", async () => {
 		const cookies = {
 			get: vi.fn(),
 		}
@@ -156,7 +154,6 @@ describe("auth session hook", () => {
 				platform: {
 					env: {
 						DB: {} as never,
-						SESSION_COOKIE_DOMAIN: "localhost",
 						SESSION_PRIVATE_KEY_JWK: "private-session-key",
 						SESSION_PUBLIC_KEY_JWK: "public-session-key",
 					},
@@ -166,7 +163,7 @@ describe("auth session hook", () => {
 			resolve,
 		} as never)
 
-		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(url, "localhost")
+		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(url)
 		expect(readSessionToken).toHaveBeenCalledWith(cookies)
 		expect(verifySessionToken).toHaveBeenCalledWith(
 			"legacy-auth-only-session",
@@ -192,8 +189,7 @@ describe("auth session hook", () => {
 			"fresh-session-token",
 			234_567,
 			{
-				secure: false,
-				domain: "localhost",
+				secure: true,
 			}
 		)
 		expect(clearSessionCookie).not.toHaveBeenCalled()

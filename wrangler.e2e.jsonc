@@ -10,7 +10,6 @@
 	},
 	"vars": {
 		"RETURN_URL_ALLOWLIST": "http://dashboard.e2e.localhost:4173/auth/callback",
-		"SESSION_COOKIE_DOMAIN": ".e2e.localhost",
 	},
 	"d1_databases": [
 		{

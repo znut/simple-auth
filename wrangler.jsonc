@@ -12,9 +12,6 @@
 		"enabled": true,
 	},
 	/* non-inherited */
-	"vars": {
-		"SESSION_COOKIE_DOMAIN": ".ex.localhost",
-	},
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -28,8 +25,7 @@
 		"production": {
 			"name": "simple-auth",
 			"vars": {
-				"RETURN_URL_ALLOWLIST": "https://app.example.com/auth/callback",
-				"SESSION_COOKIE_DOMAIN": ".example.com",
+				"RETURN_URL_ALLOWLIST": "https://dont.forget.to.changeme/auth/callback",
 			},
 			"d1_databases": [
 				{

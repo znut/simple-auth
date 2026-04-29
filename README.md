@@ -7,7 +7,7 @@ Simple Auth is a passkey-based authentication service for Cloudflare Worker. Use
 After a successful login or registration, Simple Auth now:
 
 1. Signs a session token.
-2. Sets its own `simple_auth_session` cookie for the auth app.
+2. Sets its own `__Host-simple_auth_session` cookie for the auth app.
 3. Stores the session token behind a short-lived, single-use exchange code.
 4. Appends only that exchange code to the `next` URL as `simple_auth_code`.
 
@@ -142,7 +142,7 @@ bun run deploy:init
 
 It updates:
 
-- `wrangler.jsonc` production worker name, D1 name/id, and `SESSION_COOKIE_DOMAIN`
+- `wrangler.jsonc` production worker name and D1 name/id
 - `package.json` migration scripts with the production D1 database name
 - `src/lib/server/config.ts` app name shown in the website
 
