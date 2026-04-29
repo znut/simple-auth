@@ -6,6 +6,7 @@ const {
 	createDb,
 	eq,
 	readSessionToken,
+	resolveUnsafeDevMode,
 	resolveSessionCookieOptions,
 	resolveSessionTokenAudience,
 	resolveSessionTokenIssuer,
@@ -19,6 +20,7 @@ const {
 	createDb: vi.fn(),
 	eq: vi.fn(() => Symbol("eq")),
 	readSessionToken: vi.fn(),
+	resolveUnsafeDevMode: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
 	resolveSessionTokenAudience: vi.fn(),
 	resolveSessionTokenIssuer: vi.fn(),
@@ -28,6 +30,10 @@ const {
 		raw: vi.fn(value => value),
 	},
 	verifySessionToken: vi.fn(),
+}))
+
+vi.mock("$lib/server/config", () => ({
+	resolveUnsafeDevMode,
 }))
 
 vi.mock("$lib/server/session", () => ({
@@ -75,8 +81,9 @@ import { handle } from "./hooks.server"
 describe("auth session hook", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		resolveUnsafeDevMode.mockReturnValue(true)
 		resolveSessionCookieOptions.mockReturnValue({
-			secure: true,
+			unsafeDevMode: true,
 		})
 		readSessionToken.mockReturnValue("legacy-auth-only-session")
 		resolveSessionTokenIssuer.mockReturnValue("http://auth.ex.localhost:5100")
@@ -156,6 +163,7 @@ describe("auth session hook", () => {
 						DB: {} as never,
 						SESSION_PRIVATE_KEY_JWK: "private-session-key",
 						SESSION_PUBLIC_KEY_JWK: "public-session-key",
+						UNSAFE_DEV_MODE: "true",
 					},
 				},
 				url,
@@ -163,8 +171,14 @@ describe("auth session hook", () => {
 			resolve,
 		} as never)
 
-		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(url)
-		expect(readSessionToken).toHaveBeenCalledWith(cookies)
+		expect(resolveUnsafeDevMode).toHaveBeenCalledWith({
+			DB: {},
+			SESSION_PRIVATE_KEY_JWK: "private-session-key",
+			SESSION_PUBLIC_KEY_JWK: "public-session-key",
+			UNSAFE_DEV_MODE: "true",
+		})
+		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(true)
+		expect(readSessionToken).toHaveBeenCalledWith(cookies, true)
 		expect(verifySessionToken).toHaveBeenCalledWith(
 			"legacy-auth-only-session",
 			"public-session-key",
@@ -189,7 +203,7 @@ describe("auth session hook", () => {
 			"fresh-session-token",
 			234_567,
 			{
-				secure: true,
+				unsafeDevMode: true,
 			}
 		)
 		expect(clearSessionCookie).not.toHaveBeenCalled()

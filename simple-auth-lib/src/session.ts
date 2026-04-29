@@ -1,4 +1,5 @@
 export const sessionCookieName = "__Host-simple_auth_session"
+export const localSessionCookieName = "simple_auth_session"
 export const sessionExchangeCodeQueryParamName = "simple_auth_code"
 export const sessionDurationMs = 1000 * 60 * 60 * 12
 
@@ -64,7 +65,7 @@ interface ReadableCookieStore {
 }
 
 export interface SessionCookieOptions {
-	secure: boolean
+	unsafeDevMode: boolean
 }
 
 function getBaseCookieOptions(options: SessionCookieOptions) {
@@ -72,7 +73,7 @@ function getBaseCookieOptions(options: SessionCookieOptions) {
 		httpOnly: true,
 		path: "/",
 		sameSite: "lax" as const,
-		secure: options.secure,
+		secure: !options.unsafeDevMode,
 	}
 }
 
@@ -147,10 +148,9 @@ export function shouldUseSecureCookies(value: URL | Request | string) {
 }
 
 export function resolveSessionCookieOptions(
-	value: URL | Request | string
+	unsafeDevMode = false
 ): SessionCookieOptions {
-	shouldUseSecureCookies(value)
-	return { secure: true }
+	return { unsafeDevMode }
 }
 
 export async function verifySessionToken(
@@ -231,8 +231,14 @@ export async function verifySessionToken(
 	return payload
 }
 
-export function readSessionToken(cookies?: ReadableCookieStore) {
-	return cookies?.get(sessionCookieName) ?? null
+export function readSessionToken(
+	cookies: ReadableCookieStore | undefined,
+	unsafeDevMode = false
+) {
+	return (
+		cookies?.get(unsafeDevMode ? localSessionCookieName : sessionCookieName) ??
+		null
+	)
 }
 
 function resolveUrl(value: URL | Request | string) {
@@ -265,15 +271,28 @@ export function setSessionCookie(
 	expiresAt: number,
 	options: SessionCookieOptions
 ) {
-	cookies.set(sessionCookieName, token, {
-		...getBaseCookieOptions(options),
-		expires: new Date(expiresAt),
-	})
+	cookies.set(
+		options.unsafeDevMode ? localSessionCookieName : sessionCookieName,
+		token,
+		{
+			...getBaseCookieOptions(options),
+			expires: new Date(expiresAt),
+		}
+	)
 }
 
 export function clearSessionCookie(
 	cookies: WritableCookieStore,
 	options: SessionCookieOptions
 ) {
-	cookies.delete(sessionCookieName, getBaseCookieOptions(options))
+	const cookieOptions = getBaseCookieOptions(options)
+
+	cookies.delete(
+		options.unsafeDevMode ? localSessionCookieName : sessionCookieName,
+		cookieOptions
+	)
+
+	if (!options.unsafeDevMode) {
+		cookies.delete(localSessionCookieName, cookieOptions)
+	}
 }

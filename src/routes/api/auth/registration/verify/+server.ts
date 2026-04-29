@@ -1,4 +1,7 @@
-import { resolveAllowReturnUrls } from "$lib/server/config"
+import {
+	resolveAllowReturnUrls,
+	resolveUnsafeDevMode,
+} from "$lib/server/config"
 import { getDbOrThrow } from "$lib/server/db"
 import {
 	expectedOrigin,
@@ -41,7 +44,9 @@ export const POST: RequestHandler = async ({
 	const sessionPrivateKey = resolveSessionPrivateKey(platform?.env)
 	const sessionIssuer = resolveSessionTokenIssuer(request)
 	const sessionAudience = resolveSessionTokenAudience(request)
-	const sessionCookieOptions = resolveSessionCookieOptions(request)
+	const sessionCookieOptions = resolveSessionCookieOptions(
+		resolveUnsafeDevMode(platform?.env)
+	)
 	const { email, inviteNonce, credential, next } = (await request.json()) as {
 		email?: string
 		inviteNonce?: string

@@ -42,3 +42,7 @@ export function resolveAllowReturnUrls(env?: {
 		.filter(Boolean)
 		.map(normalizeReturnUrlAllowlistEntry)
 }
+
+export function resolveUnsafeDevMode(env?: { UNSAFE_DEV_MODE?: string }) {
+	return env?.UNSAFE_DEV_MODE?.trim().toLowerCase() === "true"
+}

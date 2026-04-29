@@ -169,22 +169,23 @@ describe("session helpers", () => {
 		expect(shouldUseSecureCookies("https://dashboard.example.com")).toBe(true)
 	})
 
-	it("resolves secure host-only session cookie options", () => {
-		expect(
-			resolveSessionCookieOptions("http://auth.ex.localhost:5100")
-		).toEqual({
-			secure: true,
-		})
-		expect(resolveSessionCookieOptions("https://auth.example.com")).toEqual({
-			secure: true,
+	it("resolves production session cookie options by default", () => {
+		expect(resolveSessionCookieOptions()).toEqual({
+			unsafeDevMode: false,
 		})
 	})
 
-	it("writes and clears __Host-prefixed session cookies", () => {
+	it("resolves localhost-compatible session cookie options in unsafe dev mode", () => {
+		expect(resolveSessionCookieOptions(true)).toEqual({
+			unsafeDevMode: true,
+		})
+	})
+
+	it("writes and clears __Host-prefixed session cookies for secure origins", () => {
 		const set = vi.fn()
 		const remove = vi.fn()
 		const options = {
-			secure: true,
+			unsafeDevMode: false,
 		}
 
 		setSessionCookie(
@@ -207,22 +208,77 @@ describe("session helpers", () => {
 		expect(set).toHaveBeenCalledWith(
 			"__Host-simple_auth_session",
 			"token-value",
-			expect.objectContaining(options)
+			expect.objectContaining({ secure: true })
 		)
 		expect(remove).toHaveBeenCalledWith(
 			"__Host-simple_auth_session",
-			expect.objectContaining(options)
+			expect.objectContaining({ secure: true })
+		)
+		expect(remove).toHaveBeenCalledWith(
+			"simple_auth_session",
+			expect.objectContaining({ secure: true })
+		)
+		expect(remove).toHaveBeenCalledTimes(2)
+	})
+
+	it("writes and clears localhost-compatible session cookies in unsafe dev mode", () => {
+		const set = vi.fn()
+		const remove = vi.fn()
+		const options = {
+			unsafeDevMode: true,
+		}
+
+		setSessionCookie(
+			{
+				set,
+				delete: remove,
+			},
+			"token-value",
+			Date.now() + 1_000,
+			options
+		)
+		clearSessionCookie(
+			{
+				set,
+				delete: remove,
+			},
+			options
+		)
+
+		expect(set).toHaveBeenCalledWith(
+			"simple_auth_session",
+			"token-value",
+			expect.objectContaining({ secure: false })
+		)
+		expect(remove).toHaveBeenCalledWith(
+			"simple_auth_session",
+			expect.objectContaining({ secure: false })
 		)
 		expect(remove).toHaveBeenCalledTimes(1)
 	})
 
-	it("reads the session token from the cookie", () => {
+	it("reads the secure session token from the __Host-prefixed cookie", () => {
 		const cookies = {
-			get: vi.fn(() => "cookie-token"),
+			get: vi.fn((name: string) =>
+				name === "__Host-simple_auth_session" ? "cookie-token" : undefined
+			),
 		}
 
 		expect(readSessionToken(cookies)).toBe("cookie-token")
 		expect(cookies.get).toHaveBeenCalledWith("__Host-simple_auth_session")
+		expect(cookies.get).not.toHaveBeenCalledWith("simple_auth_session")
+	})
+
+	it("reads the localhost-compatible session cookie for non-secure origins", () => {
+		const cookies = {
+			get: vi.fn((name: string) =>
+				name === "simple_auth_session" ? "cookie-token" : undefined
+			),
+		}
+
+		expect(readSessionToken(cookies, true)).toBe("cookie-token")
+		expect(cookies.get).not.toHaveBeenCalledWith("__Host-simple_auth_session")
+		expect(cookies.get).toHaveBeenCalledWith("simple_auth_session")
 	})
 
 	it("reads one-time session exchange codes from return urls", () => {

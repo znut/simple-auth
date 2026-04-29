@@ -19,6 +19,7 @@ declare global {
 				RETURN_URL_ALLOWLIST?: string
 				SESSION_PRIVATE_KEY_JWK?: string
 				SESSION_PUBLIC_KEY_JWK?: string
+				UNSAFE_DEV_MODE?: string
 			}
 		}
 	}

@@ -13,6 +13,7 @@ const {
 	normalizeEmail,
 	removeSessionExchangeCodeFromUrl,
 	resolveAllowReturnUrls,
+	resolveUnsafeDevMode,
 	resolvePostAuthRedirect,
 	resolveSessionPrivateKey,
 	resolveSessionCookieOptions,
@@ -36,6 +37,7 @@ const {
 	normalizeEmail: vi.fn(),
 	removeSessionExchangeCodeFromUrl: vi.fn(),
 	resolveAllowReturnUrls: vi.fn(),
+	resolveUnsafeDevMode: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
 	resolveSessionPrivateKey: vi.fn(),
 	resolveSessionCookieOptions: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock("$lib/server/db", () => ({
 
 vi.mock("$lib/server/config", () => ({
 	resolveAllowReturnUrls,
+	resolveUnsafeDevMode,
 }))
 
 vi.mock("$lib/server/helpers", () => ({
@@ -143,6 +146,7 @@ describe("POST /api/auth/authentication/verify", () => {
 		resolveAllowReturnUrls.mockReturnValue([
 			"http://dashboard.ex.localhost:4173/auth/callback",
 		])
+		resolveUnsafeDevMode.mockReturnValue(true)
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
@@ -159,7 +163,7 @@ describe("POST /api/auth/authentication/verify", () => {
 			},
 		})
 		resolveSessionCookieOptions.mockReturnValue({
-			secure: true,
+			unsafeDevMode: true,
 		})
 		shouldUseSecureCookies.mockReturnValue(false)
 		signSessionToken
@@ -254,23 +258,31 @@ describe("POST /api/auth/authentication/verify", () => {
 					RETURN_URL_ALLOWLIST:
 						"http://dashboard.ex.localhost:4173/auth/callback",
 					SESSION_PRIVATE_KEY_JWK: "private-session-key",
+					UNSAFE_DEV_MODE: "true",
 				},
 			},
 		} as never)
 
-		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(request)
+		expect(resolveUnsafeDevMode).toHaveBeenCalledWith({
+			ADMIN_ROLE_KEY: "owner",
+			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
+			SESSION_PRIVATE_KEY_JWK: "private-session-key",
+			UNSAFE_DEV_MODE: "true",
+		})
+		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(true)
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
 			"auth-session-token",
 			123_456,
 			{
-				secure: true,
+				unsafeDevMode: true,
 			}
 		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			ADMIN_ROLE_KEY: "owner",
 			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
 			SESSION_PRIVATE_KEY_JWK: "private-session-key",
+			UNSAFE_DEV_MODE: "true",
 		})
 		expect(signSessionToken).toHaveBeenNthCalledWith(
 			1,

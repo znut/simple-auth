@@ -1,4 +1,7 @@
-import { resolveAllowReturnUrls } from "$lib/server/config"
+import {
+	resolveAllowReturnUrls,
+	resolveUnsafeDevMode,
+} from "$lib/server/config"
 import { resolvePostAuthRedirect } from "$lib/server/helpers"
 import {
 	clearSessionCookie,
@@ -8,7 +11,10 @@ import { redirect } from "@sveltejs/kit"
 import type { RequestHandler } from "./$types"
 
 export const GET: RequestHandler = async ({ cookies, platform, url }) => {
-	clearSessionCookie(cookies, resolveSessionCookieOptions(url))
+	clearSessionCookie(
+		cookies,
+		resolveSessionCookieOptions(resolveUnsafeDevMode(platform?.env))
+	)
 	throw redirect(
 		303,
 		resolvePostAuthRedirect(

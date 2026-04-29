@@ -11,6 +11,7 @@ const {
 	normalizeEmail,
 	removeSessionExchangeCodeFromUrl,
 	resolveAllowReturnUrls,
+	resolveUnsafeDevMode,
 	resolvePostAuthRedirect,
 	resolveRegistrationInvite,
 	resolveSessionPrivateKey,
@@ -31,6 +32,7 @@ const {
 	normalizeEmail: vi.fn(),
 	removeSessionExchangeCodeFromUrl: vi.fn(),
 	resolveAllowReturnUrls: vi.fn(),
+	resolveUnsafeDevMode: vi.fn(),
 	resolvePostAuthRedirect: vi.fn(),
 	resolveRegistrationInvite: vi.fn(),
 	resolveSessionPrivateKey: vi.fn(),
@@ -48,6 +50,7 @@ vi.mock("$lib/server/db", () => ({
 
 vi.mock("$lib/server/config", () => ({
 	resolveAllowReturnUrls,
+	resolveUnsafeDevMode,
 }))
 
 vi.mock("$lib/server/helpers", () => ({
@@ -135,6 +138,7 @@ describe("POST /api/auth/registration/verify", () => {
 		resolveAllowReturnUrls.mockReturnValue([
 			"http://dashboard.ex.localhost:4173/auth/callback",
 		])
+		resolveUnsafeDevMode.mockReturnValue(true)
 		resolvePostAuthRedirect.mockReturnValue(
 			"http://dashboard.ex.localhost:4173/"
 		)
@@ -157,7 +161,7 @@ describe("POST /api/auth/registration/verify", () => {
 			},
 		})
 		resolveSessionCookieOptions.mockReturnValue({
-			secure: true,
+			unsafeDevMode: true,
 		})
 		signSessionToken
 			.mockResolvedValueOnce({
@@ -253,22 +257,31 @@ describe("POST /api/auth/registration/verify", () => {
 					RETURN_URL_ALLOWLIST:
 						"http://dashboard.ex.localhost:4173/auth/callback",
 					SESSION_PRIVATE_KEY_JWK: "private-session-key",
+					UNSAFE_DEV_MODE: "true",
 				},
 			},
 		} as never)
 
+		expect(resolveUnsafeDevMode).toHaveBeenCalledWith({
+			ADMIN_ROLE_KEY: "owner",
+			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
+			SESSION_PRIVATE_KEY_JWK: "private-session-key",
+			UNSAFE_DEV_MODE: "true",
+		})
+		expect(resolveSessionCookieOptions).toHaveBeenCalledWith(true)
 		expect(setSessionCookie).toHaveBeenCalledWith(
 			cookies,
 			"auth-session-token",
 			123_456,
 			{
-				secure: true,
+				unsafeDevMode: true,
 			}
 		)
 		expect(resolveAllowReturnUrls).toHaveBeenCalledWith({
 			ADMIN_ROLE_KEY: "owner",
 			RETURN_URL_ALLOWLIST: "http://dashboard.ex.localhost:4173/auth/callback",
 			SESSION_PRIVATE_KEY_JWK: "private-session-key",
+			UNSAFE_DEV_MODE: "true",
 		})
 		expect(signSessionToken).toHaveBeenNthCalledWith(
 			1,

@@ -1,4 +1,5 @@
 import { createDb } from "$lib/server/db"
+import { resolveUnsafeDevMode } from "$lib/server/config"
 import {
 	listUserRoles,
 	resolvePrimarySessionRole,
@@ -22,7 +23,8 @@ import { and, eq } from "drizzle-orm"
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null
 	event.locals.sessionToken = null
-	const sessionCookieOptions = resolveSessionCookieOptions(event.url)
+	const unsafeDevMode = resolveUnsafeDevMode(event.platform?.env)
+	const sessionCookieOptions = resolveSessionCookieOptions(unsafeDevMode)
 
 	if (event.platform?.env?.DB) {
 		event.locals.db = createDb(event.platform.env.DB)
@@ -32,7 +34,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const sessionIssuer = resolveSessionTokenIssuer(event.url)
 	const sessionAudience = resolveSessionTokenAudience(event.url)
 
-	const sessionToken = readSessionToken(event.cookies)
+	const sessionToken = readSessionToken(event.cookies, unsafeDevMode)
 	if (sessionToken && event.locals.db) {
 		const payload = await verifySessionToken(sessionToken, sessionPublicKey, {
 			audience: sessionAudience,

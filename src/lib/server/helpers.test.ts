@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { resolveAllowReturnUrls } from "./config"
+import { resolveAllowReturnUrls, resolveUnsafeDevMode } from "./config"
 import {
 	expectedOrigin,
 	expectedRpId,
@@ -158,5 +158,11 @@ describe("auth helpers", () => {
 
 	it("returns undefined when the env allowlist is missing", () => {
 		expect(resolveAllowReturnUrls()).toBeUndefined()
+	})
+
+	it("enables unsafe dev mode only when explicitly set to true", () => {
+		expect(resolveUnsafeDevMode()).toBe(false)
+		expect(resolveUnsafeDevMode({ UNSAFE_DEV_MODE: "false" })).toBe(false)
+		expect(resolveUnsafeDevMode({ UNSAFE_DEV_MODE: " true " })).toBe(true)
 	})
 })

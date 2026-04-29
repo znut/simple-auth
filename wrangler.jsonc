@@ -11,6 +11,9 @@
 	"observability": {
 		"enabled": true,
 	},
+	"vars": {
+		"UNSAFE_DEV_MODE": "true",
+	},
 	/* non-inherited */
 	"d1_databases": [
 		{

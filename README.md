@@ -7,7 +7,7 @@ Simple Auth is a passkey-based authentication service for Cloudflare Worker. Use
 After a successful login or registration, Simple Auth now:
 
 1. Signs a session token.
-2. Sets its own `__Host-simple_auth_session` cookie for the auth app.
+2. Sets its own session cookie for the auth app: `__Host-simple_auth_session` on HTTPS, or `simple_auth_session` on HTTP localhost development.
 3. Stores the session token behind a short-lived, single-use exchange code.
 4. Appends only that exchange code to the `next` URL as `simple_auth_code`.
 
@@ -23,6 +23,7 @@ Example `wrangler.jsonc` config:
 {
 	"vars": {
 		"RETURN_URL_ALLOWLIST": "http://dashboard.ex.localhost:4173/auth/callback",
+		"UNSAFE_DEV_MODE": "true",
 	},
 	"env": {
 		"production": {
@@ -51,6 +52,8 @@ bun add @znut/simple-auth-lib
 ```
 
 Create a callback route that reads the token from the return URL, verifies it, and stores it in the app's own cookie jar.
+On HTTPS, `setSessionCookie` writes the `__Host-simple_auth_session` cookie. On HTTP localhost development, it writes `simple_auth_session` so browsers will send the cookie on the next local request.
+`UNSAFE_DEV_MODE` defaults to off; set it to `"true"` only for local HTTP development.
 
 Example SvelteKit route:
 
@@ -68,6 +71,7 @@ import { redirect } from "@sveltejs/kit"
 import type { RequestHandler } from "./$types"
 
 const authOrigin = "https://auth.example.com"
+const unsafeDevMode = process.env.UNSAFE_DEV_MODE === "true"
 const sessionPublicKey = process.env.SESSION_PUBLIC_KEY_JWK!
 
 export const GET: RequestHandler = async ({ cookies, fetch, request, url }) => {
@@ -111,7 +115,7 @@ export const GET: RequestHandler = async ({ cookies, fetch, request, url }) => {
 		cookies,
 		token,
 		session.exp,
-		resolveSessionCookieOptions(url)
+		resolveSessionCookieOptions(unsafeDevMode)
 	)
 
 	throw redirect(303, "/")
@@ -121,9 +125,19 @@ export const GET: RequestHandler = async ({ cookies, fetch, request, url }) => {
 ## Reading the session
 
 ```ts
-import { readSessionToken, verifySessionToken } from "@znut/simple-auth-lib"
+import {
+	readSessionToken,
+	resolveSessionCookieOptions,
+	verifySessionToken,
+} from "@znut/simple-auth-lib"
 
-const token = readSessionToken(event.cookies)
+const cookieOptions = resolveSessionCookieOptions(
+	process.env.UNSAFE_DEV_MODE === "true"
+)
+const token = readSessionToken(
+	event.cookies,
+	process.env.UNSAFE_DEV_MODE === "true"
+)
 const session = token
 	? await verifySessionToken(token, process.env.SESSION_PUBLIC_KEY_JWK!, {
 			audience: event.url.origin,
